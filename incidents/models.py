@@ -1,6 +1,20 @@
+from pathlib import Path
+from uuid import uuid4
+
 from django.contrib.auth.models import User
 from django.db import models
 from django.utils import timezone
+
+from .validators import validar_archivo_evidencia
+
+
+def ruta_evidencia_incidente(instancia, nombre_archivo):
+    extension = Path(nombre_archivo).suffix.lower()
+    nombre_seguro = f"{uuid4().hex}{extension}"
+    return (
+        f"evidencias/incidentes/{instancia.incidente_id}/"
+        f"{nombre_seguro}"
+    )
 
 
 class Incidente(models.Model):
@@ -69,3 +83,45 @@ class SeguimientoIncidente(models.Model):
     def __str__(self):
         fecha = self.fecha_hora.strftime("%d/%m/%Y %H:%M")
         return f"{self.incidente} - {fecha} - {self.usuario.username}"
+
+
+class EvidenciaIncidente(models.Model):
+    class Tipo(models.TextChoices):
+        FOTO = "FOTO", "Fotografía"
+        VIDEO = "VIDEO", "Video"
+        DOCUMENTO = "DOCUMENTO", "Documento"
+        OTRO = "OTRO", "Otro"
+
+    incidente = models.ForeignKey(
+        Incidente,
+        on_delete=models.CASCADE,
+        related_name="evidencias",
+    )
+    archivo = models.FileField(upload_to=ruta_evidencia_incidente)
+    tipo = models.CharField(max_length=9, choices=Tipo.choices)
+    descripcion = models.TextField(blank=True)
+    usuario = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="evidencias_incidentes",
+    )
+    fecha_hora = models.DateTimeField(default=timezone.now)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-fecha_hora",)
+        verbose_name = "evidencia de incidente"
+        verbose_name_plural = "evidencias de incidentes"
+
+    def clean(self):
+        super().clean()
+        if self.archivo:
+            validar_archivo_evidencia(self.archivo.name, self.tipo)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    def __str__(self):
+        fecha = self.fecha_hora.strftime("%d/%m/%Y %H:%M")
+        return f"{self.incidente} - {self.get_tipo_display()} - {fecha}"
