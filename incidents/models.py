@@ -125,3 +125,32 @@ class EvidenciaIncidente(models.Model):
     def __str__(self):
         fecha = self.fecha_hora.strftime("%d/%m/%Y %H:%M")
         return f"{self.incidente} - {self.get_tipo_display()} - {fecha}"
+
+
+class ParticipacionInstitucion(models.Model):
+    incidente = models.ForeignKey(
+        Incidente,
+        on_delete=models.CASCADE,
+        related_name="participaciones_institucionales",
+    )
+    institucion = models.ForeignKey(
+        "operations.InstitucionApoyo",
+        on_delete=models.PROTECT,
+        related_name="participaciones_incidentes",
+    )
+    fecha_asignacion = models.DateTimeField(default=timezone.now)
+    observacion = models.TextField(blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = (
+            models.UniqueConstraint(
+                fields=("incidente", "institucion"),
+                name="incidente_institucion_unica",
+            ),
+        )
+        verbose_name = "participación institucional"
+        verbose_name_plural = "participaciones institucionales"
+
+    def __str__(self):
+        return f"{self.institucion} - {self.incidente}"

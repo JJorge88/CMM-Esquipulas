@@ -1,6 +1,11 @@
 from django.contrib import admin
 
-from .models import EvidenciaIncidente, Incidente, SeguimientoIncidente
+from .models import (
+    EvidenciaIncidente,
+    Incidente,
+    ParticipacionInstitucion,
+    SeguimientoIncidente,
+)
 
 
 class SeguimientoIncidenteInline(admin.TabularInline):
@@ -53,6 +58,13 @@ class EvidenciaIncidenteInline(admin.TabularInline):
         return False
 
 
+class ParticipacionInstitucionInline(admin.TabularInline):
+    model = ParticipacionInstitucion
+    fields = ("institucion", "fecha_asignacion", "observacion")
+    raw_id_fields = ("institucion",)
+    extra = 0
+
+
 @admin.register(Incidente)
 class IncidenteAdmin(admin.ModelAdmin):
     list_display = (
@@ -75,7 +87,11 @@ class IncidenteAdmin(admin.ModelAdmin):
         "operador_responsable__username",
     )
     list_select_related = ("operador_responsable",)
-    inlines = (SeguimientoIncidenteInline, EvidenciaIncidenteInline)
+    inlines = (
+        SeguimientoIncidenteInline,
+        EvidenciaIncidenteInline,
+        ParticipacionInstitucionInline,
+    )
 
 
 @admin.register(SeguimientoIncidente)
@@ -116,3 +132,16 @@ class EvidenciaIncidenteAdmin(admin.ModelAdmin):
         "usuario__username",
     )
     list_select_related = ("incidente", "usuario")
+
+
+@admin.register(ParticipacionInstitucion)
+class ParticipacionInstitucionAdmin(admin.ModelAdmin):
+    list_display = ("incidente", "institucion", "fecha_asignacion")
+    list_filter = ("institucion", "fecha_asignacion")
+    search_fields = (
+        "institucion__nombre",
+        "institucion__siglas",
+        "incidente__ubicacion",
+        "incidente__descripcion",
+    )
+    list_select_related = ("incidente", "institucion")

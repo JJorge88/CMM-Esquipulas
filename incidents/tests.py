@@ -5,10 +5,19 @@ from unittest.mock import patch
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import IntegrityError, transaction
+from django.db.models.deletion import ProtectedError
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
-from .models import EvidenciaIncidente, Incidente, SeguimientoIncidente
+from operations.models import InstitucionApoyo
+
+from .models import (
+    EvidenciaIncidente,
+    Incidente,
+    ParticipacionInstitucion,
+    SeguimientoIncidente,
+)
 from .services import registrar_seguimiento
 
 
@@ -269,4 +278,146 @@ class EvidenciaIncidenteTests(TestCase):
 
         self.assertFalse(
             EvidenciaIncidente.objects.filter(pk=evidencia_id).exists()
+        )
+
+
+class ParticipacionInstitucionTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.usuario = User.objects.create_user(
+            username="operador_participacion_prueba"
+        )
+        cls.incidente = Incidente.objects.create(
+            fecha_hora_reporte=timezone.now(),
+            ubicacion="Primera ubicación de prueba",
+            tipo_incidente="Tipo de prueba",
+            prioridad="Prioridad de prueba",
+            descripcion="Primer incidente para probar participaciones.",
+            operador_responsable=cls.usuario,
+        )
+        cls.otro_incidente = Incidente.objects.create(
+            fecha_hora_reporte=timezone.now(),
+            ubicacion="Segunda ubicación de prueba",
+            tipo_incidente="Tipo de prueba",
+            prioridad="Prioridad de prueba",
+            descripcion="Segundo incidente para probar participaciones.",
+            operador_responsable=cls.usuario,
+        )
+        cls.institucion = InstitucionApoyo.objects.create(
+            nombre="Primera institución de prueba"
+        )
+        cls.otra_institucion = InstitucionApoyo.objects.create(
+            nombre="Segunda institución de prueba"
+        )
+
+    def test_asociar_institucion_a_incidente(self):
+        participacion = ParticipacionInstitucion.objects.create(
+            incidente=self.incidente,
+            institucion=self.institucion,
+        )
+
+        self.assertEqual(participacion.incidente, self.incidente)
+        self.assertEqual(participacion.institucion, self.institucion)
+        self.assertIsNotNone(participacion.fecha_asignacion)
+
+    def test_incidente_puede_tener_multiples_instituciones(self):
+        ParticipacionInstitucion.objects.create(
+            incidente=self.incidente,
+            institucion=self.institucion,
+        )
+        ParticipacionInstitucion.objects.create(
+            incidente=self.incidente,
+            institucion=self.otra_institucion,
+        )
+
+        self.assertEqual(
+            self.incidente.participaciones_institucionales.count(),
+            2,
+        )
+
+    def test_institucion_puede_participar_en_multiples_incidentes(self):
+        ParticipacionInstitucion.objects.create(
+            incidente=self.incidente,
+            institucion=self.institucion,
+        )
+        ParticipacionInstitucion.objects.create(
+            incidente=self.otro_incidente,
+            institucion=self.institucion,
+        )
+
+        self.assertEqual(
+            self.institucion.participaciones_incidentes.count(),
+            2,
+        )
+
+    def test_no_permite_duplicar_institucion_en_mismo_incidente(self):
+        ParticipacionInstitucion.objects.create(
+            incidente=self.incidente,
+            institucion=self.institucion,
+        )
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                ParticipacionInstitucion.objects.create(
+                    incidente=self.incidente,
+                    institucion=self.institucion,
+                )
+
+        self.assertEqual(
+            self.incidente.participaciones_institucionales.count(),
+            1,
+        )
+
+    def test_relacion_inversa_del_incidente(self):
+        participacion = ParticipacionInstitucion.objects.create(
+            incidente=self.incidente,
+            institucion=self.institucion,
+        )
+
+        self.assertQuerySetEqual(
+            self.incidente.participaciones_institucionales.all(),
+            [participacion],
+        )
+
+    def test_relacion_inversa_de_la_institucion(self):
+        participacion = ParticipacionInstitucion.objects.create(
+            incidente=self.incidente,
+            institucion=self.institucion,
+        )
+
+        self.assertQuerySetEqual(
+            self.institucion.participaciones_incidentes.all(),
+            [participacion],
+        )
+        self.assertEqual(
+            self.institucion.participaciones_incidentes.get().incidente,
+            self.incidente,
+        )
+
+    def test_eliminar_incidente_elimina_sus_participaciones(self):
+        participacion = ParticipacionInstitucion.objects.create(
+            incidente=self.incidente,
+            institucion=self.institucion,
+        )
+        participacion_id = participacion.pk
+
+        self.incidente.delete()
+
+        self.assertFalse(
+            ParticipacionInstitucion.objects.filter(
+                pk=participacion_id
+            ).exists()
+        )
+
+    def test_no_permite_eliminar_institucion_con_participaciones(self):
+        ParticipacionInstitucion.objects.create(
+            incidente=self.incidente,
+            institucion=self.institucion,
+        )
+
+        with self.assertRaises(ProtectedError):
+            self.institucion.delete()
+
+        self.assertTrue(
+            InstitucionApoyo.objects.filter(pk=self.institucion.pk).exists()
         )
