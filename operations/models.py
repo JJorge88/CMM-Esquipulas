@@ -122,3 +122,70 @@ class AsignacionTurno(models.Model):
 
     def __str__(self):
         return f"{self.operador.username} - {self.turno} - {self.fecha}"
+
+
+class TipoRecurso(models.Model):
+    nombre = models.CharField(max_length=100, unique=True)
+    descripcion = models.TextField(blank=True)
+    activo = models.BooleanField(default=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("nombre",)
+        verbose_name = "tipo de recurso"
+        verbose_name_plural = "tipos de recursos"
+
+    def __str__(self):
+        return self.nombre
+
+
+class RecursoInstitucional(models.Model):
+    class Estado(models.TextChoices):
+        DISPONIBLE = "DISPONIBLE", "Disponible"
+        EN_USO = "EN_USO", "En uso"
+        MANTENIMIENTO = "MANTENIMIENTO", "Mantenimiento"
+        FUERA_DE_SERVICIO = "FUERA_DE_SERVICIO", "Fuera de servicio"
+
+    nombre = models.CharField(max_length=200)
+    tipo = models.ForeignKey(
+        TipoRecurso,
+        on_delete=models.PROTECT,
+        related_name="recursos",
+    )
+    codigo_interno = models.CharField(max_length=100, blank=True)
+    marca = models.CharField(max_length=100, blank=True)
+    modelo = models.CharField(max_length=100, blank=True)
+    numero_serie = models.CharField(max_length=150, blank=True)
+    ubicacion = models.CharField(max_length=255, blank=True)
+    descripcion = models.TextField(blank=True)
+    estado = models.CharField(
+        max_length=17,
+        choices=Estado.choices,
+        default=Estado.DISPONIBLE,
+    )
+    activo = models.BooleanField(default=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("nombre",)
+        constraints = (
+            models.UniqueConstraint(
+                fields=("codigo_interno",),
+                condition=~models.Q(codigo_interno=""),
+                name="codigo_interno_recurso_unico",
+            ),
+            models.UniqueConstraint(
+                fields=("numero_serie",),
+                condition=~models.Q(numero_serie=""),
+                name="numero_serie_recurso_unico",
+            ),
+        )
+        verbose_name = "recurso institucional"
+        verbose_name_plural = "recursos institucionales"
+
+    def __str__(self):
+        if self.codigo_interno:
+            return f"{self.nombre} ({self.codigo_interno})"
+        return self.nombre

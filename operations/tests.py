@@ -2,12 +2,19 @@ from datetime import date, time, timedelta
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
 from django.db.models.deletion import ProtectedError
 from django.test import TestCase
 
 from accounts.models import PerfilUsuario
 
-from .models import AsignacionTurno, InstitucionApoyo, Turno
+from .models import (
+    AsignacionTurno,
+    InstitucionApoyo,
+    RecursoInstitucional,
+    TipoRecurso,
+    Turno,
+)
 
 
 class InstitucionApoyoTests(TestCase):
@@ -234,3 +241,129 @@ class AsignacionTurnoTests(TestCase):
 
         with self.assertRaises(ProtectedError):
             self.turno_manana.delete()
+
+
+class TipoRecursoTests(TestCase):
+    def test_crear_tipo_recurso(self):
+        tipo = TipoRecurso.objects.create(
+            nombre="Tipo de recurso de prueba",
+            descripcion="Descripción de prueba.",
+        )
+
+        tipo.refresh_from_db()
+        self.assertEqual(tipo.nombre, "Tipo de recurso de prueba")
+        self.assertTrue(tipo.activo)
+        self.assertIsNotNone(tipo.fecha_creacion)
+        self.assertIsNotNone(tipo.fecha_actualizacion)
+
+
+class RecursoInstitucionalTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.tipo = TipoRecurso.objects.create(
+            nombre="Tipo para recursos de prueba"
+        )
+
+    def crear_recurso(self, **datos):
+        valores = {
+            "nombre": "Recurso institucional de prueba",
+            "tipo": self.tipo,
+        }
+        valores.update(datos)
+        return RecursoInstitucional.objects.create(**valores)
+
+    def test_crear_recurso_institucional(self):
+        recurso = self.crear_recurso(
+            codigo_interno="COD-PRUEBA-001",
+            marca="Marca de prueba",
+            modelo="Modelo de prueba",
+            numero_serie="SERIE-PRUEBA-001",
+            ubicacion="Ubicación de prueba",
+            descripcion="Descripción de prueba.",
+        )
+
+        recurso.refresh_from_db()
+        self.assertEqual(recurso.nombre, "Recurso institucional de prueba")
+        self.assertEqual(recurso.tipo, self.tipo)
+        self.assertTrue(recurso.activo)
+
+    def test_estado_predeterminado_es_disponible(self):
+        recurso = self.crear_recurso()
+
+        self.assertEqual(
+            recurso.estado,
+            RecursoInstitucional.Estado.DISPONIBLE,
+        )
+
+    def test_relacion_inversa_tipo_recursos(self):
+        recurso = self.crear_recurso()
+
+        self.assertQuerySetEqual(self.tipo.recursos.all(), [recurso])
+
+    def test_rechazar_codigo_interno_duplicado(self):
+        self.crear_recurso(codigo_interno="CODIGO-DUPLICADO")
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                self.crear_recurso(
+                    nombre="Segundo recurso de prueba",
+                    codigo_interno="CODIGO-DUPLICADO",
+                )
+
+    def test_permitir_codigo_interno_vacio_en_multiples_recursos(self):
+        self.crear_recurso(codigo_interno="")
+        self.crear_recurso(
+            nombre="Segundo recurso sin código",
+            codigo_interno="",
+        )
+
+        self.assertEqual(RecursoInstitucional.objects.count(), 2)
+
+    def test_rechazar_numero_serie_duplicado(self):
+        self.crear_recurso(numero_serie="SERIE-DUPLICADA")
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                self.crear_recurso(
+                    nombre="Segundo recurso de prueba",
+                    numero_serie="SERIE-DUPLICADA",
+                )
+
+    def test_permitir_numero_serie_vacio_en_multiples_recursos(self):
+        self.crear_recurso(numero_serie="")
+        self.crear_recurso(
+            nombre="Segundo recurso sin serie",
+            numero_serie="",
+        )
+
+        self.assertEqual(RecursoInstitucional.objects.count(), 2)
+
+    def test_protect_impide_eliminar_tipo_con_recursos(self):
+        self.crear_recurso()
+
+        with self.assertRaises(ProtectedError):
+            self.tipo.delete()
+
+    def test_permitir_cambios_de_estado(self):
+        recurso = self.crear_recurso()
+
+        recurso.estado = RecursoInstitucional.Estado.EN_USO
+        recurso.save(update_fields=("estado", "fecha_actualizacion"))
+        recurso.refresh_from_db()
+        self.assertEqual(recurso.estado, RecursoInstitucional.Estado.EN_USO)
+
+        recurso.estado = RecursoInstitucional.Estado.MANTENIMIENTO
+        recurso.save(update_fields=("estado", "fecha_actualizacion"))
+        recurso.refresh_from_db()
+        self.assertEqual(
+            recurso.estado,
+            RecursoInstitucional.Estado.MANTENIMIENTO,
+        )
+
+        recurso.estado = RecursoInstitucional.Estado.DISPONIBLE
+        recurso.save(update_fields=("estado", "fecha_actualizacion"))
+        recurso.refresh_from_db()
+        self.assertEqual(
+            recurso.estado,
+            RecursoInstitucional.Estado.DISPONIBLE,
+        )
