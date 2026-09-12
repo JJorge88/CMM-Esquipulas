@@ -3,22 +3,27 @@
 {% block title %}Administración de usuarios | CMM Esquipulas{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+<div class="page-heading d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
     <div>
-        <p class="section-eyebrow mb-1">ADMINISTRACIÓN</p>
         <h1 class="h2 mb-1">Administración de usuarios</h1>
-        <p class="text-secondary mb-0">Gestión de cuentas y acceso institucional.</p>
+        <p class="text-secondary mb-0">Gestión de usuarios y acceso al sistema.</p>
     </div>
-    <a class="btn btn-primary" href="{% url 'accounts:user_create' %}">Nuevo usuario</a>
+    <a class="btn btn-primary" href="{% url 'accounts:user_create' %}"><i class="bi bi-person-plus me-1" aria-hidden="true"></i> Nuevo usuario</a>
 </div>
 
-<section class="card dashboard-card mb-4" aria-labelledby="filtros-usuarios-titulo">
+<section class="row row-cols-1 row-cols-sm-3 g-3 mb-4" aria-label="Resumen de usuarios">
+    <div class="col"><div class="card indicator-card h-100"><div class="card-body"><p class="indicator-label">Usuarios registrados</p><p class="indicator-value mb-0">{{ resumen_usuarios.total }}</p></div></div></div>
+    <div class="col"><div class="card indicator-card h-100"><div class="card-body"><p class="indicator-label">Usuarios activos</p><p class="indicator-value mb-0">{{ resumen_usuarios.activos }}</p></div></div></div>
+    <div class="col"><div class="card indicator-card h-100"><div class="card-body"><p class="indicator-label">Usuarios inactivos</p><p class="indicator-value mb-0">{{ resumen_usuarios.inactivos }}</p></div></div></div>
+</section>
+
+<section class="card dashboard-card filter-panel mb-4" aria-labelledby="filtros-usuarios-titulo">
     <div class="card-header"><h2 class="h5 mb-0" id="filtros-usuarios-titulo">Búsqueda y filtros</h2></div>
     <div class="card-body">
         <form method="get" action="{% url 'accounts:user_list' %}">
             <div class="row g-3 align-items-end">
                 {% for campo in filtros %}
-                    <div class="col-12 col-md-4">
+                    <div class="col-12 {% if campo.name == 'busqueda' %}col-md-6 col-xl-5{% else %}col-md-3 col-xl-3{% endif %}">
                         <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
                         {{ campo }}
                         {% for error in campo.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}

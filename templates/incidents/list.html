@@ -3,18 +3,17 @@
 {% block title %}Incidentes | CMM Esquipulas{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+<div class="page-heading d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
     <div>
-        <p class="section-eyebrow mb-1">GESTIÓN DE INCIDENTES</p>
         <h1 class="h2 mb-1">Incidentes</h1>
-        <p class="text-secondary mb-0">Consulta y seguimiento del registro institucional.</p>
+        <p class="text-secondary mb-0">Consulta y gestión de incidentes registrados.</p>
     </div>
     {% if puede_registrar_incidente %}
-        <a class="btn btn-primary" href="{% url 'incidents:create' %}">Registrar incidente</a>
+        <a class="btn btn-primary" href="{% url 'incidents:create' %}"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i> Registrar incidente</a>
     {% endif %}
 </div>
 
-<section class="card dashboard-card mb-4" aria-labelledby="filtros-titulo">
+<section class="card dashboard-card filter-panel mb-4" aria-labelledby="filtros-titulo">
     <div class="card-header"><h2 class="h5 mb-0" id="filtros-titulo">Búsqueda y filtros</h2></div>
     <div class="card-body">
         <form method="get" action="{% url 'incidents:list' %}">
@@ -22,16 +21,15 @@
                 <div class="alert alert-warning" role="alert">{{ filtros.non_field_errors }}</div>
             {% endif %}
             <div class="row g-3 align-items-end">
-                {% for campo in filtros %}
-                    <div class="col-12 col-sm-6 {% if campo.name == 'busqueda' %}col-xl-4{% else %}col-xl-2{% endif %}">
-                        <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
-                        {{ campo }}
-                        {% for error in campo.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
-                    </div>
-                {% endfor %}
-                <div class="col-12 d-flex flex-wrap gap-2">
-                    <button class="btn btn-primary" type="submit">Filtrar</button>
-                    <a class="btn btn-outline-secondary" href="{% url 'incidents:list' %}">Limpiar</a>
+                <div class="col-12 col-lg-5"><label class="form-label" for="{{ filtros.busqueda.id_for_label }}">Buscar</label>{{ filtros.busqueda }}{% for error in filtros.busqueda.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>
+                <div class="col-12 col-sm-6 col-lg-3"><label class="form-label" for="{{ filtros.tipo.id_for_label }}">Tipo de incidente</label>{{ filtros.tipo }}{% for error in filtros.tipo.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>
+                <div class="col-12 col-sm-6 col-lg-2"><label class="form-label" for="{{ filtros.estado.id_for_label }}">Estado</label>{{ filtros.estado }}{% for error in filtros.estado.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>
+                <div class="col-12 col-sm-6 col-lg-2"><label class="form-label" for="{{ filtros.prioridad.id_for_label }}">Prioridad</label>{{ filtros.prioridad }}{% for error in filtros.prioridad.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>
+                <div class="col-12 col-sm-6 col-lg-3"><label class="form-label" for="{{ filtros.fecha_desde.id_for_label }}">Fecha desde</label>{{ filtros.fecha_desde }}{% for error in filtros.fecha_desde.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>
+                <div class="col-12 col-sm-6 col-lg-3"><label class="form-label" for="{{ filtros.fecha_hasta.id_for_label }}">Fecha hasta</label>{{ filtros.fecha_hasta }}{% for error in filtros.fecha_hasta.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>
+                <div class="col-12 col-lg-6 d-flex flex-wrap align-items-end gap-2">
+                    <button class="btn btn-primary" type="submit">Aplicar filtros</button>
+                    <a class="btn btn-link" href="{% url 'incidents:list' %}">Limpiar filtros</a>
                 </div>
             </div>
         </form>
@@ -47,7 +45,7 @@
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead>
-                    <tr><th scope="col">ID</th><th scope="col">Fecha y hora</th><th scope="col">Tipo</th><th scope="col">Ubicación</th><th scope="col">Prioridad</th><th scope="col">Estado</th><th scope="col">Operador responsable</th></tr>
+                    <tr><th scope="col">ID</th><th scope="col">Fecha y hora</th><th scope="col">Tipo</th><th scope="col">Ubicación</th><th scope="col">Prioridad</th><th scope="col">Estado</th><th scope="col">Responsable</th><th scope="col">Acciones</th></tr>
                 </thead>
                 <tbody>
                     {% for incidente in pagina %}
@@ -56,13 +54,14 @@
                             <td class="text-nowrap">{{ incidente.fecha_hora_reporte|date:"d/m/Y H:i" }}</td>
                             <td>{{ incidente.tipo_incidente }}</td>
                             <td>{{ incidente.ubicacion }}</td>
-                            <td>{{ incidente.prioridad }}</td>
+                            <td><span class="priority-pill">{{ incidente.prioridad }}</span></td>
                             <td>
                                 <span class="badge {% if incidente.estado == 'CERRADO' %}text-bg-secondary{% elif incidente.estado == 'EN_SEGUIMIENTO' %}text-bg-info{% else %}text-bg-warning{% endif %}">
                                     {{ incidente.get_estado_display }}
                                 </span>
                             </td>
                             <td>{{ incidente.operador_responsable.username }}</td>
+                            <td><a class="table-action" href="{% url 'incidents:detail' incidente.pk %}" aria-label="Ver detalle del incidente {{ incidente.id }}"><i class="bi bi-eye me-1" aria-hidden="true"></i> Ver</a></td>
                         </tr>
                     {% endfor %}
                 </tbody>

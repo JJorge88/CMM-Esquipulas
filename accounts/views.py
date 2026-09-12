@@ -7,7 +7,7 @@ from django.contrib.auth.views import LoginView, LogoutView
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
@@ -105,6 +105,11 @@ def dashboard(request):
 @roles_permitidos(PerfilUsuario.Rol.ADMINISTRADOR)
 def listar_usuarios(request):
     filtros = FiltroUsuariosForm(request.GET or None)
+    resumen_usuarios = User.objects.aggregate(
+        total=Count("pk"),
+        activos=Count("pk", filter=Q(is_active=True)),
+        inactivos=Count("pk", filter=Q(is_active=False)),
+    )
     usuarios = User.objects.select_related("perfil")
     if filtros.is_valid():
         datos = filtros.cleaned_data
@@ -135,6 +140,7 @@ def listar_usuarios(request):
             "filtros": filtros,
             "pagina": pagina,
             "query_paginacion": query_paginacion,
+            "resumen_usuarios": resumen_usuarios,
         },
     )
 

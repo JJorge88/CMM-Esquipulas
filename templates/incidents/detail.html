@@ -3,18 +3,17 @@
 {% block title %}Incidente {{ incidente.id }} | CMM Esquipulas{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+<div class="page-heading d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
     <div>
-        <p class="section-eyebrow mb-1">GESTIÓN DE INCIDENTES</p>
-        <h1 class="h2 mb-1">Incidente #{{ incidente.id }}</h1>
-        <p class="text-secondary mb-0">Detalle y seguimiento del acontecimiento reportado.</p>
+        <h1 class="h2 mb-1">Seguimiento de incidente</h1>
+        <p class="text-secondary mb-0">Incidente #{{ incidente.id }} · Historial y evidencias del reporte.</p>
     </div>
     <a class="btn btn-outline-secondary" href="{% url 'incidents:list' %}">Volver al listado</a>
 </div>
 
 <div class="row g-4">
     <div class="col-12 col-xl-7">
-        <section class="card dashboard-card mb-4" aria-labelledby="informacion-titulo">
+        <section class="card dashboard-card incident-info-card mb-4" aria-labelledby="informacion-titulo">
             <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <h2 class="h5 mb-0" id="informacion-titulo">Información del incidente</h2>
                 <span class="badge {% if cerrado %}text-bg-secondary{% elif incidente.estado == 'EN_SEGUIMIENTO' %}text-bg-info{% else %}text-bg-warning{% endif %}">{{ incidente.get_estado_display }}</span>
@@ -36,7 +35,7 @@
 
         <section class="card dashboard-card mb-4" aria-labelledby="descripcion-titulo">
             <div class="card-header"><h2 class="h5 mb-0" id="descripcion-titulo">Descripción</h2></div>
-            <div class="card-body"><p class="mb-0 incident-text">{{ incidente.descripcion|linebreaksbr }}</p></div>
+            <div class="card-body"><p class="incident-description mb-0 incident-text">{{ incidente.descripcion|linebreaksbr }}</p></div>
         </section>
 
         <section class="card dashboard-card mb-4" aria-labelledby="instituciones-titulo">
@@ -54,11 +53,11 @@
             </div>
         </section>
 
-        <section class="card dashboard-card mb-4" aria-labelledby="evidencias-titulo">
+        <section class="card dashboard-card evidence-card mb-4" aria-labelledby="evidencias-titulo">
             <div class="card-header"><h2 class="h5 mb-0" id="evidencias-titulo">Evidencias</h2></div>
             <div class="card-body">
                 {% for evidencia in incidente.evidencias.all %}
-                    <div class="incident-entry {% if not forloop.last %}border-bottom pb-3 mb-3{% endif %}">
+                    <div class="incident-entry evidence-entry {% if not forloop.last %}border-bottom pb-3 mb-3{% endif %}">
                         <div class="d-flex flex-wrap justify-content-between gap-2 mb-1">
                             <p class="fw-semibold mb-0">{{ evidencia.get_tipo_display }}</p>
                             <span class="small text-secondary">{{ evidencia.fecha_hora|date:"d/m/Y H:i" }}</span>
@@ -96,17 +95,18 @@
     </div>
 
     <div class="col-12 col-xl-5">
-        <section class="card dashboard-card mb-4" aria-labelledby="historial-titulo">
+        <section class="card dashboard-card timeline-card mb-4" aria-labelledby="historial-titulo">
             <div class="card-header"><h2 class="h5 mb-0" id="historial-titulo">Historial de seguimiento</h2></div>
             <div class="card-body">
                 {% for seguimiento in incidente.seguimientos.all %}
-                    <div class="incident-entry {% if not forloop.last %}border-bottom pb-3 mb-3{% endif %}">
+                    <div class="incident-entry timeline-entry">
+                        <i class="bi bi-circle-fill timeline-marker" aria-hidden="true"></i>
                         <div class="d-flex flex-wrap justify-content-between gap-2 mb-1">
                             <p class="fw-semibold mb-0">{{ seguimiento.usuario.username }}</p>
                             <span class="small text-secondary">{{ seguimiento.fecha_hora|date:"d/m/Y H:i" }}</span>
                         </div>
                         <p class="incident-text mb-2">{{ seguimiento.observacion|linebreaksbr }}</p>
-                        <p class="small text-secondary mb-0">{{ seguimiento.get_estado_anterior_display|default:"Sin estado anterior" }} → {{ seguimiento.get_estado_nuevo_display }}</p>
+                        <p class="small text-secondary mb-0">{{ seguimiento.get_estado_anterior_display|default:"Sin estado anterior" }} <i class="bi bi-arrow-right mx-1" aria-hidden="true"></i> {{ seguimiento.get_estado_nuevo_display }}</p>
                     </div>
                 {% empty %}
                     <p class="empty-message mb-0">No hay seguimientos registrados.</p>
@@ -117,7 +117,7 @@
         {% if cerrado %}
             <div class="alert alert-secondary" role="status">Este incidente está cerrado. No admite nuevos seguimientos.</div>
         {% elif puede_agregar %}
-            <section class="card dashboard-card mb-4" aria-labelledby="agregar-seguimiento-titulo">
+            <section class="card dashboard-card followup-card mb-4" aria-labelledby="agregar-seguimiento-titulo">
                 <div class="card-header"><h2 class="h5 mb-0" id="agregar-seguimiento-titulo">Agregar seguimiento</h2></div>
                 <div class="card-body">
                     <form method="post" action="{% url 'incidents:detail' incidente.pk %}">

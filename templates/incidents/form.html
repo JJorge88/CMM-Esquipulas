@@ -3,13 +3,12 @@
 {% block title %}Registrar incidente | CMM Esquipulas{% endblock %}
 
 {% block content %}
-<div class="mb-4">
-    <p class="section-eyebrow mb-1">GESTIÓN DE INCIDENTES</p>
+<div class="page-heading mb-4">
     <h1 class="h2 mb-1">Registrar incidente</h1>
     <p class="text-secondary mb-0">Complete la información del acontecimiento reportado.</p>
 </div>
 
-<form method="post" action="{% url 'incidents:create' %}" class="incident-form">
+<form method="post" action="{% url 'incidents:create' %}" class="incident-form form-layout">
     {% csrf_token %}
     {% if formulario.non_field_errors %}<div class="alert alert-danger" role="alert">{{ formulario.non_field_errors }}</div>{% endif %}
     <section class="card dashboard-card mb-4" aria-labelledby="general-titulo">
@@ -52,7 +51,7 @@
     </section>
 
     <section class="card dashboard-card mb-4" aria-labelledby="asignacion-titulo">
-        <div class="card-header"><h2 class="h5 mb-0" id="asignacion-titulo">Asignación</h2></div>
+        <div class="card-header"><h2 class="h5 mb-0" id="asignacion-titulo">Asignación y monitoreo</h2></div>
         <div class="card-body">
             <p class="text-secondary mb-1">Operador responsable</p>
             <p class="fw-semibold mb-0">{{ request.user.get_full_name|default:request.user.username }}</p>
