@@ -14,6 +14,7 @@ from reports.services import (
 )
 
 from .models import PerfilUsuario
+from .navigation import obtener_navegacion
 
 
 class IniciarSesionView(LoginView):
@@ -33,26 +34,10 @@ def inicio(request):
 
 @login_required
 def dashboard(request):
-    perfil = PerfilUsuario.objects.filter(usuario=request.user).first()
-    rol = perfil.rol if perfil else None
-    rol_mostrado = perfil.get_rol_display() if perfil else "Sin rol asignado"
-
-    secciones_por_rol = {
-        PerfilUsuario.Rol.ADMINISTRADOR: (
-            "Incidentes", "Operación", "Reportes", "Usuarios"
-        ),
-        PerfilUsuario.Rol.COORDINADOR: (
-            "Incidentes", "Operación", "Reportes"
-        ),
-        PerfilUsuario.Rol.OPERADOR: ("Incidentes",),
-        PerfilUsuario.Rol.CONSULTA: ("Incidentes", "Reportes"),
-        PerfilUsuario.Rol.AUDITOR: ("Incidentes", "Reportes"),
-    }
-    menu = [{"titulo": "Inicio", "url": "dashboard"}]
-    menu.extend(
-        {"titulo": titulo, "url": "#"}
-        for titulo in secciones_por_rol.get(rol, ())
-    )
+    navegacion = obtener_navegacion(request.user)
+    rol = PerfilUsuario.objects.filter(usuario=request.user).values_list(
+        "rol", flat=True
+    ).first()
 
     fecha_desde_texto = request.GET.get("fecha_desde", "")
     fecha_hasta_texto = request.GET.get("fecha_hasta", "")
@@ -95,8 +80,7 @@ def dashboard(request):
         {
             "nombre_usuario": request.user.get_full_name()
             or request.user.username,
-            "rol_usuario": rol_mostrado,
-            "menu": menu,
+            **navegacion,
             "resumen": resumen,
             "tipos": tipos,
             "prioridades": prioridades,

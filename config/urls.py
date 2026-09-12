@@ -26,6 +26,7 @@ urlpatterns = [
     path("", inicio, name="inicio"),
     path("", include("accounts.urls")),
     path("dashboard/", dashboard, name="dashboard"),
+    path("incidentes/", include("incidents.urls")),
 ]
 
 if settings.DEBUG:

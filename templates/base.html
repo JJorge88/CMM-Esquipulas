@@ -21,7 +21,7 @@
                     {% if opcion.url == '#' %}
                         <span class="sidebar-link nav-pendiente" aria-disabled="true">{{ opcion.titulo }}</span>
                     {% else %}
-                        <a class="sidebar-link {% if request.path == '/dashboard/' %}active{% endif %}" href="{% url opcion.url %}">{{ opcion.titulo }}</a>
+                        <a class="sidebar-link {% if opcion.titulo == 'Inicio' and request.path == '/dashboard/' or opcion.titulo == 'Incidentes' and '/incidentes/' in request.path %}active{% endif %}" href="{% url opcion.url %}">{{ opcion.titulo }}</a>
                     {% endif %}
                 {% endfor %}
             </nav>
@@ -67,6 +67,14 @@
         </header>
 
         <main class="app-main container-fluid px-3 px-lg-4 py-4" id="contenido">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
             {% block content %}{% endblock %}
         </main>
     </div>
