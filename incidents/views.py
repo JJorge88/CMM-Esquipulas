@@ -1,14 +1,27 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
-from django.db.models import Q
-from django.shortcuts import redirect, render
+from django.db.models import Prefetch, Q
+from django.http import HttpResponseBadRequest
+from django.shortcuts import get_object_or_404, redirect, render
 
 from accounts.navigation import obtener_navegacion
 
-from .forms import FiltroIncidentesForm, IncidenteForm
-from .models import Incidente
+from .forms import (
+    EvidenciaForm,
+    FiltroIncidentesForm,
+    IncidenteForm,
+    SeguimientoForm,
+)
+from .models import (
+    EvidenciaIncidente,
+    Incidente,
+    ParticipacionInstitucion,
+    SeguimientoIncidente,
+)
+from .services import registrar_seguimiento
 
 
 @login_required
@@ -80,4 +93,84 @@ def registrar_incidente(request):
         request,
         "incidents/form.html",
         {**navegacion, "formulario": formulario},
+    )
+
+
+@login_required
+def detalle_incidente(request, pk):
+    incidente = get_object_or_404(
+        Incidente.objects.select_related("operador_responsable").prefetch_related(
+            Prefetch(
+                "seguimientos",
+                queryset=SeguimientoIncidente.objects.select_related("usuario")
+                .order_by("fecha_hora", "pk"),
+            ),
+            Prefetch(
+                "evidencias",
+                queryset=EvidenciaIncidente.objects.select_related("usuario")
+                .order_by("-fecha_hora", "-pk"),
+            ),
+            Prefetch(
+                "participaciones_institucionales",
+                queryset=ParticipacionInstitucion.objects.select_related(
+                    "institucion"
+                ).order_by("fecha_asignacion", "pk"),
+            ),
+        ),
+        pk=pk,
+    )
+    navegacion = obtener_navegacion(request.user)
+    puede_agregar = navegacion["puede_registrar_incidente"]
+    cerrado = incidente.estado == Incidente.Estado.CERRADO
+    formulario_seguimiento = SeguimientoForm(estado_actual=incidente.estado)
+    formulario_evidencia = EvidenciaForm()
+
+    if request.method == "POST":
+        if not puede_agregar:
+            raise PermissionDenied("No tiene permiso para modificar incidentes.")
+        accion = request.POST.get("accion")
+        if accion == "seguimiento":
+            if cerrado:
+                raise PermissionDenied("No se permiten seguimientos en incidentes cerrados.")
+            formulario_seguimiento = SeguimientoForm(
+                request.POST, estado_actual=incidente.estado
+            )
+            if formulario_seguimiento.is_valid():
+                try:
+                    registrar_seguimiento(
+                        incidente=incidente,
+                        usuario=request.user,
+                        observacion=formulario_seguimiento.cleaned_data["observacion"],
+                        estado_nuevo=formulario_seguimiento.cleaned_data["estado_nuevo"],
+                    )
+                except ValidationError as error:
+                    formulario_seguimiento.add_error(None, error)
+                else:
+                    messages.success(
+                        request, "Seguimiento registrado correctamente."
+                    )
+                    return redirect("incidents:detail", pk=pk)
+        elif accion == "evidencia":
+            formulario_evidencia = EvidenciaForm(request.POST, request.FILES)
+            if formulario_evidencia.is_valid():
+                evidencia = formulario_evidencia.save(commit=False)
+                evidencia.incidente = incidente
+                evidencia.usuario = request.user
+                evidencia.save()
+                messages.success(request, "Evidencia registrada correctamente.")
+                return redirect("incidents:detail", pk=pk)
+        else:
+            return HttpResponseBadRequest("Acción no válida.")
+
+    return render(
+        request,
+        "incidents/detail.html",
+        {
+            **navegacion,
+            "incidente": incidente,
+            "formulario_seguimiento": formulario_seguimiento,
+            "formulario_evidencia": formulario_evidencia,
+            "puede_agregar": puede_agregar,
+            "cerrado": cerrado,
+        },
     )

@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+
+{% block title %}Incidente {{ incidente.id }} | CMM Esquipulas{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <p class="section-eyebrow mb-1">GESTIÓN DE INCIDENTES</p>
+        <h1 class="h2 mb-1">Incidente #{{ incidente.id }}</h1>
+        <p class="text-secondary mb-0">Detalle y seguimiento del acontecimiento reportado.</p>
+    </div>
+    <a class="btn btn-outline-secondary" href="{% url 'incidents:list' %}">Volver al listado</a>
+</div>
+
+<div class="row g-4">
+    <div class="col-12 col-xl-7">
+        <section class="card dashboard-card mb-4" aria-labelledby="informacion-titulo">
+            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <h2 class="h5 mb-0" id="informacion-titulo">Información del incidente</h2>
+                <span class="badge {% if cerrado %}text-bg-secondary{% elif incidente.estado == 'EN_SEGUIMIENTO' %}text-bg-info{% else %}text-bg-warning{% endif %}">{{ incidente.get_estado_display }}</span>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0 incident-facts">
+                    <div class="col-12 col-sm-6"><dt>ID</dt><dd>{{ incidente.id }}</dd></div>
+                    <div class="col-12 col-sm-6"><dt>Fecha y hora del reporte</dt><dd>{{ incidente.fecha_hora_reporte|date:"d/m/Y H:i" }}</dd></div>
+                    <div class="col-12 col-sm-6"><dt>Ubicación</dt><dd>{{ incidente.ubicacion }}</dd></div>
+                    <div class="col-12 col-sm-6"><dt>Tipo</dt><dd>{{ incidente.tipo_incidente }}</dd></div>
+                    <div class="col-12 col-sm-6"><dt>Prioridad</dt><dd>{{ incidente.prioridad }}</dd></div>
+                    <div class="col-12 col-sm-6"><dt>Estado</dt><dd>{{ incidente.get_estado_display }}</dd></div>
+                    <div class="col-12 col-sm-6"><dt>Operador responsable</dt><dd>{{ incidente.operador_responsable.username }}</dd></div>
+                    <div class="col-12 col-sm-6"><dt>Fecha de creación</dt><dd>{{ incidente.fecha_creacion|date:"d/m/Y H:i" }}</dd></div>
+                    <div class="col-12 col-sm-6"><dt>Última actualización</dt><dd>{{ incidente.fecha_actualizacion|date:"d/m/Y H:i" }}</dd></div>
+                </dl>
+            </div>
+        </section>
+
+        <section class="card dashboard-card mb-4" aria-labelledby="descripcion-titulo">
+            <div class="card-header"><h2 class="h5 mb-0" id="descripcion-titulo">Descripción</h2></div>
+            <div class="card-body"><p class="mb-0 incident-text">{{ incidente.descripcion|linebreaksbr }}</p></div>
+        </section>
+
+        <section class="card dashboard-card mb-4" aria-labelledby="instituciones-titulo">
+            <div class="card-header"><h2 class="h5 mb-0" id="instituciones-titulo">Instituciones participantes</h2></div>
+            <div class="card-body">
+                {% for participacion in incidente.participaciones_institucionales.all %}
+                    <div class="incident-entry {% if not forloop.last %}border-bottom pb-3 mb-3{% endif %}">
+                        <p class="fw-semibold mb-1">{{ participacion.institucion.nombre }}{% if participacion.institucion.siglas %} ({{ participacion.institucion.siglas }}){% endif %}</p>
+                        <p class="small text-secondary mb-1">Asignada: {{ participacion.fecha_asignacion|date:"d/m/Y H:i" }}</p>
+                        {% if participacion.observacion %}<p class="mb-0 incident-text">{{ participacion.observacion|linebreaksbr }}</p>{% endif %}
+                    </div>
+                {% empty %}
+                    <p class="empty-message mb-0">No hay instituciones participantes registradas.</p>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="card dashboard-card mb-4" aria-labelledby="evidencias-titulo">
+            <div class="card-header"><h2 class="h5 mb-0" id="evidencias-titulo">Evidencias</h2></div>
+            <div class="card-body">
+                {% for evidencia in incidente.evidencias.all %}
+                    <div class="incident-entry {% if not forloop.last %}border-bottom pb-3 mb-3{% endif %}">
+                        <div class="d-flex flex-wrap justify-content-between gap-2 mb-1">
+                            <p class="fw-semibold mb-0">{{ evidencia.get_tipo_display }}</p>
+                            <span class="small text-secondary">{{ evidencia.fecha_hora|date:"d/m/Y H:i" }}</span>
+                        </div>
+                        <p class="small text-secondary mb-1">Cargada por {{ evidencia.usuario.username }}</p>
+                        {% if evidencia.descripcion %}<p class="incident-text mb-2">{{ evidencia.descripcion|linebreaksbr }}</p>{% endif %}
+                        {% if evidencia.archivo %}<a href="{{ evidencia.archivo.url }}" download>Descargar archivo</a>{% endif %}
+                    </div>
+                {% empty %}
+                    <p class="empty-message mb-0">No hay evidencias registradas.</p>
+                {% endfor %}
+            </div>
+        </section>
+
+        {% if puede_agregar %}
+            <section class="card dashboard-card mb-4" aria-labelledby="cargar-evidencia-titulo">
+                <div class="card-header"><h2 class="h5 mb-0" id="cargar-evidencia-titulo">Agregar evidencia</h2></div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'incidents:detail' incidente.pk %}" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" name="accion" value="evidencia">
+                        {% if formulario_evidencia.non_field_errors %}<div class="alert alert-danger" role="alert">{{ formulario_evidencia.non_field_errors }}</div>{% endif %}
+                        {% for campo in formulario_evidencia %}
+                            <div class="mb-3">
+                                <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                                {{ campo }}
+                                {% for error in campo.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                            </div>
+                        {% endfor %}
+                        <button class="btn btn-primary" type="submit">Guardar evidencia</button>
+                    </form>
+                </div>
+            </section>
+        {% endif %}
+    </div>
+
+    <div class="col-12 col-xl-5">
+        <section class="card dashboard-card mb-4" aria-labelledby="historial-titulo">
+            <div class="card-header"><h2 class="h5 mb-0" id="historial-titulo">Historial de seguimiento</h2></div>
+            <div class="card-body">
+                {% for seguimiento in incidente.seguimientos.all %}
+                    <div class="incident-entry {% if not forloop.last %}border-bottom pb-3 mb-3{% endif %}">
+                        <div class="d-flex flex-wrap justify-content-between gap-2 mb-1">
+                            <p class="fw-semibold mb-0">{{ seguimiento.usuario.username }}</p>
+                            <span class="small text-secondary">{{ seguimiento.fecha_hora|date:"d/m/Y H:i" }}</span>
+                        </div>
+                        <p class="incident-text mb-2">{{ seguimiento.observacion|linebreaksbr }}</p>
+                        <p class="small text-secondary mb-0">{{ seguimiento.get_estado_anterior_display|default:"Sin estado anterior" }} → {{ seguimiento.get_estado_nuevo_display }}</p>
+                    </div>
+                {% empty %}
+                    <p class="empty-message mb-0">No hay seguimientos registrados.</p>
+                {% endfor %}
+            </div>
+        </section>
+
+        {% if cerrado %}
+            <div class="alert alert-secondary" role="status">Este incidente está cerrado. No admite nuevos seguimientos.</div>
+        {% elif puede_agregar %}
+            <section class="card dashboard-card mb-4" aria-labelledby="agregar-seguimiento-titulo">
+                <div class="card-header"><h2 class="h5 mb-0" id="agregar-seguimiento-titulo">Agregar seguimiento</h2></div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'incidents:detail' incidente.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="accion" value="seguimiento">
+                        {% if formulario_seguimiento.non_field_errors %}<div class="alert alert-warning" role="alert">{{ formulario_seguimiento.non_field_errors }}</div>{% endif %}
+                        {% for campo in formulario_seguimiento %}
+                            <div class="mb-3">
+                                <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                                {{ campo }}
+                                {% for error in campo.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                            </div>
+                        {% endfor %}
+                        <button class="btn btn-primary" type="submit">Registrar seguimiento</button>
+                    </form>
+                </div>
+            </section>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

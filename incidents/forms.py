@@ -1,7 +1,8 @@
 from django import forms
 from django.core.exceptions import ValidationError
 
-from .models import Incidente
+from .models import EvidenciaIncidente, Incidente
+from .services import TRANSICIONES_PERMITIDAS
 
 
 class IncidenteForm(forms.ModelForm):
@@ -95,3 +96,46 @@ class FiltroIncidentesForm(forms.Form):
                 "La fecha inicial no puede ser posterior a la fecha final."
             )
         return datos
+
+
+class SeguimientoForm(forms.Form):
+    observacion = forms.CharField(
+        label="Observación",
+        widget=forms.Textarea(attrs={"class": "form-control", "rows": 4}),
+    )
+    estado_nuevo = forms.ChoiceField(
+        label="Nuevo estado",
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+
+    def __init__(self, *args, estado_actual, **kwargs):
+        super().__init__(*args, **kwargs)
+        permitidos = TRANSICIONES_PERMITIDAS.get(estado_actual, set())
+        self.fields["estado_nuevo"].choices = [
+            (valor, etiqueta)
+            for valor, etiqueta in Incidente.Estado.choices
+            if valor in permitidos
+        ]
+
+
+class EvidenciaForm(forms.ModelForm):
+    class Meta:
+        model = EvidenciaIncidente
+        fields = ("archivo", "tipo", "descripcion", "fecha_hora")
+        labels = {
+            "archivo": "Archivo",
+            "tipo": "Tipo de evidencia",
+            "descripcion": "Descripción",
+            "fecha_hora": "Fecha y hora",
+        }
+        widgets = {
+            "archivo": forms.ClearableFileInput(attrs={"class": "form-control"}),
+            "tipo": forms.Select(attrs={"class": "form-select"}),
+            "descripcion": forms.Textarea(
+                attrs={"class": "form-control", "rows": 3}
+            ),
+            "fecha_hora": forms.DateTimeInput(
+                attrs={"type": "datetime-local", "class": "form-control"},
+                format="%Y-%m-%dT%H:%M",
+            ),
+        }

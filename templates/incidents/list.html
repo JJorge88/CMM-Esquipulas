@@ -52,7 +52,7 @@
                 <tbody>
                     {% for incidente in pagina %}
                         <tr>
-                            <td>{{ incidente.id }}</td>
+                            <td><a class="fw-semibold" href="{% url 'incidents:detail' incidente.pk %}" aria-label="Ver incidente {{ incidente.id }}">{{ incidente.id }}</a></td>
                             <td class="text-nowrap">{{ incidente.fecha_hora_reporte|date:"d/m/Y H:i" }}</td>
                             <td>{{ incidente.tipo_incidente }}</td>
                             <td>{{ incidente.ubicacion }}</td>

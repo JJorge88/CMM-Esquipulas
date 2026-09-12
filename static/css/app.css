@@ -196,6 +196,22 @@ body {
     color: #6a7b8c;
 }
 
+.incident-facts dt {
+    color: #647587;
+    font-size: .82rem;
+    font-weight: 600;
+}
+
+.incident-facts dd {
+    margin-bottom: 1rem;
+    overflow-wrap: anywhere;
+}
+
+.incident-text,
+.incident-entry {
+    overflow-wrap: anywhere;
+}
+
 .dashboard-card .table th {
     color: #647587;
     font-size: .8rem;
