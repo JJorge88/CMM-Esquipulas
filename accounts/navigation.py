@@ -37,6 +37,7 @@ def obtener_navegacion(usuario):
                 (
                     {"titulo": "Turnos", "url": "operations:turn_list"},
                     {"titulo": "Asignaciones", "url": "operations:assignment_list"},
+                    {"titulo": "Instituciones", "url": "operations:institution_list"},
                 )
                 if titulo == "Operación" else ()
             ),
@@ -48,4 +49,7 @@ def obtener_navegacion(usuario):
         "rol_usuario": perfil.get_rol_display() if perfil else "Sin rol asignado",
         "puede_registrar_incidente": rol in ROLES_REGISTRO_INCIDENTES,
         "mostrar_mis_turnos": rol == PerfilUsuario.Rol.OPERADOR,
+        "mostrar_instituciones": rol in (
+            PerfilUsuario.Rol.OPERADOR, PerfilUsuario.Rol.CONSULTA,
+        ),
     }

@@ -53,6 +53,18 @@
             </div>
         </section>
 
+        {% if puede_agregar %}
+            <section class="card dashboard-card mb-4" aria-labelledby="agregar-institucion-titulo">
+                <div class="card-header"><h2 class="h5 mb-0" id="agregar-institucion-titulo">Agregar institución participante</h2></div>
+                <div class="card-body"><form method="post" action="{% url 'incidents:detail' incidente.pk %}" novalidate>
+                    {% csrf_token %}<input type="hidden" name="accion" value="institucion">
+                    {% for error in formulario_participacion.non_field_errors %}<div class="alert alert-danger">{{ error }}</div>{% endfor %}
+                    {% for campo in formulario_participacion %}<div class="mb-3"><label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>{{ campo }}{% for error in campo.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>{% endfor %}
+                    <button class="btn btn-primary" type="submit">Asignar institución</button>
+                </form></div>
+            </section>
+        {% endif %}
+
         <section class="card dashboard-card evidence-card mb-4" aria-labelledby="evidencias-titulo">
             <div class="card-header"><h2 class="h5 mb-0" id="evidencias-titulo">Evidencias</h2></div>
             <div class="card-body">

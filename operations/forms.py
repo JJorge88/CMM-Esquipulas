@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 
 from accounts.models import PerfilUsuario
 
-from .models import AsignacionTurno, Turno
+from .models import AsignacionTurno, InstitucionApoyo, Turno
 
 
 class TurnoForm(forms.ModelForm):
@@ -85,3 +85,39 @@ class FiltroAsignacionesForm(forms.Form):
         if desde and hasta and desde > hasta:
             self.add_error("fecha_hasta", "La fecha final debe ser igual o posterior a la inicial.")
         return datos
+
+
+class InstitucionForm(forms.ModelForm):
+    class Meta:
+        model = InstitucionApoyo
+        fields = (
+            "nombre", "siglas", "telefono", "correo_electronico",
+            "direccion", "activa",
+        )
+        widgets = {
+            "nombre": forms.TextInput(attrs={"class": "form-control"}),
+            "siglas": forms.TextInput(attrs={"class": "form-control"}),
+            "telefono": forms.TextInput(attrs={"class": "form-control"}),
+            "correo_electronico": forms.EmailInput(attrs={"class": "form-control"}),
+            "direccion": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "activa": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
+
+    def __init__(self, *args, permitir_estado=True, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not permitir_estado:
+            self.fields.pop("activa")
+
+
+class FiltroInstitucionesForm(forms.Form):
+    busqueda = forms.CharField(
+        required=False, label="Buscar",
+        widget=forms.TextInput(attrs={
+            "class": "form-control", "placeholder": "Nombre, siglas o teléfono",
+        }),
+    )
+    estado = forms.ChoiceField(
+        required=False, label="Estado",
+        choices=(("", "Todas"), ("activa", "Activas"), ("inactiva", "Inactivas")),
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )

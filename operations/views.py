@@ -1,19 +1,25 @@
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
 from accounts.models import PerfilUsuario
 from accounts.navigation import obtener_navegacion
 from accounts.permissions import roles_permitidos
 
-from .forms import AsignacionForm, FiltroAsignacionesForm, FiltroTurnosForm, TurnoForm
-from .models import AsignacionTurno, Turno
+from .forms import (
+    AsignacionForm, FiltroAsignacionesForm, FiltroInstitucionesForm,
+    FiltroTurnosForm, InstitucionForm, TurnoForm,
+)
+from .models import AsignacionTurno, InstitucionApoyo, Turno
 
 
 GESTORES = (PerfilUsuario.Rol.ADMINISTRADOR, PerfilUsuario.Rol.COORDINADOR)
 LECTORES = (*GESTORES, PerfilUsuario.Rol.AUDITOR)
 LECTORES_ASIGNACIONES = (*LECTORES, PerfilUsuario.Rol.OPERADOR)
+LECTORES_INSTITUCIONES = (*LECTORES_ASIGNACIONES, PerfilUsuario.Rol.CONSULTA)
 
 
 def _paginacion(request, objetos):
@@ -141,3 +147,79 @@ def editar_asignacion(request, pk):
         **obtener_navegacion(request.user), "formulario": formulario,
         "creacion": False, "asignacion": asignacion,
     })
+
+
+@roles_permitidos(*LECTORES_INSTITUCIONES)
+def listar_instituciones(request):
+    filtros = FiltroInstitucionesForm(request.GET or None)
+    instituciones = InstitucionApoyo.objects.all()
+    if filtros.is_valid():
+        busqueda = filtros.cleaned_data["busqueda"].strip()
+        if busqueda:
+            instituciones = instituciones.filter(
+                Q(nombre__icontains=busqueda)
+                | Q(siglas__icontains=busqueda)
+                | Q(telefono__icontains=busqueda)
+            )
+        estado = filtros.cleaned_data["estado"]
+        if estado:
+            instituciones = instituciones.filter(activa=estado == "activa")
+    pagina, query_paginacion = _paginacion(
+        request, instituciones.order_by("nombre", "pk")
+    )
+    return render(request, "operations/institution_list.html", {
+        **obtener_navegacion(request.user), "filtros": filtros,
+        "pagina": pagina, "query_paginacion": query_paginacion,
+        "puede_gestionar": _puede_gestionar(request),
+        "puede_cambiar_estado": PerfilUsuario.objects.filter(
+            usuario=request.user, rol=PerfilUsuario.Rol.ADMINISTRADOR
+        ).exists(),
+    })
+
+
+@roles_permitidos(*GESTORES)
+def crear_institucion(request):
+    es_admin = PerfilUsuario.objects.filter(
+        usuario=request.user, rol=PerfilUsuario.Rol.ADMINISTRADOR
+    ).exists()
+    formulario = InstitucionForm(request.POST or None, permitir_estado=es_admin)
+    if request.method == "POST" and formulario.is_valid():
+        formulario.save()
+        messages.success(request, "Institución creada correctamente.")
+        return redirect("operations:institution_list")
+    return render(request, "operations/institution_form.html", {
+        **obtener_navegacion(request.user), "formulario": formulario,
+        "creacion": True,
+    })
+
+
+@roles_permitidos(*GESTORES)
+def editar_institucion(request, pk):
+    institucion = get_object_or_404(InstitucionApoyo, pk=pk)
+    es_admin = PerfilUsuario.objects.filter(
+        usuario=request.user, rol=PerfilUsuario.Rol.ADMINISTRADOR
+    ).exists()
+    formulario = InstitucionForm(
+        request.POST or None, instance=institucion, permitir_estado=es_admin
+    )
+    if request.method == "POST" and formulario.is_valid():
+        formulario.save()
+        messages.success(request, "Institución actualizada correctamente.")
+        return redirect("operations:institution_list")
+    return render(request, "operations/institution_form.html", {
+        **obtener_navegacion(request.user), "formulario": formulario,
+        "creacion": False, "institucion": institucion,
+    })
+
+
+@roles_permitidos(PerfilUsuario.Rol.ADMINISTRADOR)
+@require_POST
+def cambiar_estado_institucion(request, pk):
+    institucion = get_object_or_404(InstitucionApoyo, pk=pk)
+    institucion.activa = not institucion.activa
+    institucion.save(update_fields=("activa", "fecha_actualizacion"))
+    if institucion.activa:
+        messages.success(request, "Institución activada correctamente.")
+    else:
+        messages.success(request, "Institución desactivada correctamente.")
+    return redirect("operations:institution_list")

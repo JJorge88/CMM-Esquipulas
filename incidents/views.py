@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
+from django.db import IntegrityError, transaction
 from django.db.models import Prefetch, Q
 from django.http import HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
@@ -13,6 +14,7 @@ from .forms import (
     EvidenciaForm,
     FiltroIncidentesForm,
     IncidenteForm,
+    ParticipacionInstitucionForm,
     SeguimientoForm,
 )
 from .models import (
@@ -22,6 +24,7 @@ from .models import (
     SeguimientoIncidente,
 )
 from .services import registrar_seguimiento
+from django.utils import timezone
 
 
 @login_required
@@ -124,6 +127,9 @@ def detalle_incidente(request, pk):
     cerrado = incidente.estado == Incidente.Estado.CERRADO
     formulario_seguimiento = SeguimientoForm(estado_actual=incidente.estado)
     formulario_evidencia = EvidenciaForm()
+    formulario_participacion = ParticipacionInstitucionForm(
+        incidente=incidente, initial={"fecha_asignacion": timezone.localtime()}
+    )
 
     if request.method == "POST":
         if not puede_agregar:
@@ -159,6 +165,23 @@ def detalle_incidente(request, pk):
                 evidencia.save()
                 messages.success(request, "Evidencia registrada correctamente.")
                 return redirect("incidents:detail", pk=pk)
+        elif accion == "institucion":
+            formulario_participacion = ParticipacionInstitucionForm(
+                request.POST, incidente=incidente
+            )
+            if formulario_participacion.is_valid():
+                participacion = formulario_participacion.save(commit=False)
+                participacion.incidente = incidente
+                try:
+                    with transaction.atomic():
+                        participacion.save()
+                except IntegrityError:
+                    formulario_participacion.add_error(
+                        "institucion", "Esta institución ya está asociada al incidente."
+                    )
+                else:
+                    messages.success(request, "Institución asignada correctamente.")
+                    return redirect("incidents:detail", pk=pk)
         else:
             return HttpResponseBadRequest("Acción no válida.")
 
@@ -170,6 +193,7 @@ def detalle_incidente(request, pk):
             "incidente": incidente,
             "formulario_seguimiento": formulario_seguimiento,
             "formulario_evidencia": formulario_evidencia,
+            "formulario_participacion": formulario_participacion,
             "puede_agregar": puede_agregar,
             "cerrado": cerrado,
         },

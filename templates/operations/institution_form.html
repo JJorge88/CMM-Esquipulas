@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if creacion %}Nueva institución{% else %}Editar institución{% endif %} | CMM Esquipulas{% endblock %}
+{% block content %}
+<div class="page-heading mb-4"><a class="text-decoration-none" href="{% url 'operations:institution_list' %}"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i> Volver a instituciones</a><h1 class="h2 mt-3 mb-1">{% if creacion %}Nueva institución{% else %}Editar institución{% endif %}</h1><p class="text-secondary mb-0">Información de contacto y disponibilidad de la institución.</p></div>
+<section class="card dashboard-card" aria-label="Datos de la institución"><div class="card-body p-4"><form method="post" novalidate>{% csrf_token %}
+    {% for error in formulario.non_field_errors %}<div class="alert alert-danger">{{ error }}</div>{% endfor %}
+    <div class="row g-3">{% for campo in formulario %}<div class="{% if campo.name == 'direccion' or campo.name == 'activa' %}col-12{% else %}col-12 col-md-6{% endif %}">{% if campo.name == 'activa' %}<div class="form-check mt-2">{{ campo }}<label class="form-check-label" for="{{ campo.id_for_label }}">Activa</label></div>{% else %}<label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>{{ campo }}{% endif %}{% for error in campo.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>{% endfor %}</div>
+    <div class="d-flex flex-wrap gap-2 mt-4"><button class="btn btn-primary" type="submit">Guardar institución</button><a class="btn btn-outline-secondary" href="{% url 'operations:institution_list' %}">Cancelar</a></div>
+</form></div></section>
+{% endblock %}

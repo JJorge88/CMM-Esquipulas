@@ -1,7 +1,9 @@
 from django import forms
 from django.core.exceptions import ValidationError
 
-from .models import EvidenciaIncidente, Incidente
+from operations.models import InstitucionApoyo
+
+from .models import EvidenciaIncidente, Incidente, ParticipacionInstitucion
 from .services import TRANSICIONES_PERMITIDAS
 
 
@@ -139,3 +141,39 @@ class EvidenciaForm(forms.ModelForm):
                 format="%Y-%m-%dT%H:%M",
             ),
         }
+
+
+class ParticipacionInstitucionForm(forms.ModelForm):
+    class Meta:
+        model = ParticipacionInstitucion
+        fields = ("institucion", "observacion", "fecha_asignacion")
+        labels = {
+            "institucion": "Institución",
+            "observacion": "Observación",
+            "fecha_asignacion": "Fecha y hora de asignación",
+        }
+        widgets = {
+            "institucion": forms.Select(attrs={"class": "form-select"}),
+            "observacion": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "fecha_asignacion": forms.DateTimeInput(
+                format="%Y-%m-%dT%H:%M",
+                attrs={"type": "datetime-local", "class": "form-control"},
+            ),
+        }
+
+    def __init__(self, *args, incidente, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.incidente = incidente
+        self.fields["institucion"].queryset = InstitucionApoyo.objects.filter(
+            activa=True
+        ).order_by("nombre")
+
+    def clean_institucion(self):
+        institucion = self.cleaned_data["institucion"]
+        if ParticipacionInstitucion.objects.filter(
+            incidente=self.incidente, institucion=institucion
+        ).exists():
+            raise ValidationError(
+                "Esta institución ya está asociada al incidente."
+            )
+        return institucion
