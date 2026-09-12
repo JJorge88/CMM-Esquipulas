@@ -9,44 +9,69 @@
     <link href="{% static 'css/app.css' %}" rel="stylesheet">
 </head>
 <body>
-    <header class="app-header">
-        <nav class="navbar navbar-expand-lg navbar-dark container-fluid px-3 px-lg-4" aria-label="Navegación principal">
-            <a class="navbar-brand fw-semibold" href="{% url 'inicio' %}">CMM Esquipulas</a>
-            {% if request.user.is_authenticated %}
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menuPrincipal" aria-controls="menuPrincipal" aria-expanded="false" aria-label="Mostrar menú">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="collapse navbar-collapse" id="menuPrincipal">
-                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                        {% for opcion in menu %}
-                            <li class="nav-item">
-                                {% if opcion.url == '#' %}
-                                    <span class="nav-link nav-pendiente" aria-disabled="true">{{ opcion.titulo }}</span>
-                                {% else %}
-                                    <a class="nav-link" href="{% url opcion.url %}">{{ opcion.titulo }}</a>
-                                {% endif %}
-                            </li>
-                        {% endfor %}
-                    </ul>
-                    <div class="d-lg-flex align-items-lg-center gap-3 text-white">
-                        <div class="user-meta small mb-2 mb-lg-0">
+    {% if request.user.is_authenticated %}
+        <aside class="app-sidebar d-none d-lg-flex flex-column" aria-label="Navegación principal">
+            <a class="sidebar-brand" href="{% url 'inicio' %}">
+                <span class="brand-mark" aria-hidden="true">CMM</span>
+                <span><strong>CMM Esquipulas</strong><small>Centro de Monitoreo Municipal</small></span>
+            </a>
+            <div class="sidebar-caption">MENÚ PRINCIPAL</div>
+            <nav class="sidebar-nav" aria-label="Secciones">
+                {% for opcion in menu %}
+                    {% if opcion.url == '#' %}
+                        <span class="sidebar-link nav-pendiente" aria-disabled="true">{{ opcion.titulo }}</span>
+                    {% else %}
+                        <a class="sidebar-link {% if request.path == '/dashboard/' %}active{% endif %}" href="{% url opcion.url %}">{{ opcion.titulo }}</a>
+                    {% endif %}
+                {% endfor %}
+            </nav>
+            <p class="sidebar-foot mt-auto mb-0">Gestión operativa institucional</p>
+        </aside>
+    {% endif %}
+
+    <div class="app-shell {% if not request.user.is_authenticated %}app-shell-public{% endif %}">
+        <header class="app-header">
+            <nav class="navbar navbar-expand-lg container-fluid px-3 px-lg-4" aria-label="Barra superior">
+                {% if request.user.is_authenticated %}
+                    <div class="d-flex align-items-center gap-3">
+                        <button class="navbar-toggler d-lg-none" type="button" data-bs-toggle="collapse" data-bs-target="#menuMovil" aria-controls="menuMovil" aria-expanded="false" aria-label="Mostrar menú">
+                            <span class="navbar-toggler-icon"></span>
+                        </button>
+                        <span class="header-title">Panel de monitoreo</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-3 ms-auto">
+                        <div class="user-meta small text-end">
                             <span class="d-block fw-semibold">{{ request.user.get_full_name|default:request.user.username }}</span>
-                            <span class="d-block text-white-50">{{ rol_usuario }}</span>
+                            <span class="d-block text-secondary">{{ rol_usuario }}</span>
                         </div>
                         <form method="post" action="{% url 'logout' %}">
                             {% csrf_token %}
-                            <button class="btn btn-outline-light btn-sm" type="submit">Cerrar sesión</button>
+                            <button class="btn btn-outline-secondary btn-sm" type="submit">Cerrar sesión</button>
                         </form>
                     </div>
-                </div>
-            {% endif %}
-        </nav>
-    </header>
+                    <div class="collapse w-100 d-lg-none" id="menuMovil">
+                        <nav class="mobile-nav pt-3" aria-label="Secciones móviles">
+                            {% for opcion in menu %}
+                                {% if opcion.url == '#' %}
+                                    <span class="mobile-link nav-pendiente" aria-disabled="true">{{ opcion.titulo }}</span>
+                                {% else %}
+                                    <a class="mobile-link" href="{% url opcion.url %}">{{ opcion.titulo }}</a>
+                                {% endif %}
+                            {% endfor %}
+                        </nav>
+                    </div>
+                {% else %}
+                    <a class="navbar-brand fw-semibold" href="{% url 'inicio' %}">CMM Esquipulas</a>
+                {% endif %}
+            </nav>
+        </header>
 
-    <main class="app-main container py-4 py-lg-5" id="contenido">
-        {% block content %}{% endblock %}
-    </main>
+        <main class="app-main container-fluid px-3 px-lg-4 py-4" id="contenido">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+    {% block scripts %}{% endblock %}
 </body>
 </html>

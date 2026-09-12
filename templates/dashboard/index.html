@@ -1,11 +1,110 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}Inicio | CMM Esquipulas{% endblock %}
+{% block title %}Panel principal | CMM Esquipulas{% endblock %}
 
 {% block content %}
-<section class="welcome-panel rounded-4 p-4 p-lg-5" aria-labelledby="bienvenida-titulo">
-    <p class="text-uppercase small fw-semibold text-primary mb-2">Panel principal</p>
-    <h1 class="h2 mb-3" id="bienvenida-titulo">Bienvenido, {{ nombre_usuario }}</h1>
-    <p class="mb-0 text-secondary">Rol: <strong class="text-body">{{ rol_usuario }}</strong></p>
+<div class="dashboard-heading d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+    <div>
+        <p class="section-eyebrow mb-1">CENTRO DE MONITOREO MUNICIPAL</p>
+        <h1 class="h2 mb-1">Panel principal</h1>
+        <p class="text-secondary mb-0">Bienvenido, {{ nombre_usuario }} <span class="mx-1">·</span> Rol: <strong>{{ rol_usuario }}</strong></p>
+    </div>
+    <form class="period-filter d-flex flex-wrap align-items-end gap-2" method="get" action="{% url 'dashboard' %}">
+        <div>
+            <label class="form-label small mb-1" for="fecha-desde">Desde</label>
+            <input class="form-control form-control-sm" type="date" id="fecha-desde" name="fecha_desde" value="{{ fecha_desde }}">
+        </div>
+        <div>
+            <label class="form-label small mb-1" for="fecha-hasta">Hasta</label>
+            <input class="form-control form-control-sm" type="date" id="fecha-hasta" name="fecha_hasta" value="{{ fecha_hasta }}">
+        </div>
+        <button class="btn btn-primary btn-sm" type="submit">Filtrar</button>
+        <a class="btn btn-outline-secondary btn-sm" href="{% url 'dashboard' %}">Limpiar</a>
+    </form>
+</div>
+
+{% if error_periodo %}
+    <div class="alert alert-warning" role="alert">{{ error_periodo }} Se muestran los datos sin filtro.</div>
+{% endif %}
+
+<section aria-label="Indicadores de incidentes" class="mb-4">
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-5 g-3">
+        <div class="col"><div class="card indicator-card h-100"><div class="card-body"><p class="indicator-label">Total de incidentes</p><p class="indicator-value mb-0">{{ resumen.total_incidentes }}</p></div></div></div>
+        <div class="col"><div class="card indicator-card h-100"><div class="card-body"><p class="indicator-label">Pendientes</p><p class="indicator-value mb-0">{{ resumen.pendientes }}</p></div></div></div>
+        <div class="col"><div class="card indicator-card h-100"><div class="card-body"><p class="indicator-label">En seguimiento</p><p class="indicator-value mb-0">{{ resumen.en_seguimiento }}</p></div></div></div>
+        <div class="col"><div class="card indicator-card h-100"><div class="card-body"><p class="indicator-label">Cerrados</p><p class="indicator-value mb-0">{{ resumen.cerrados }}</p></div></div></div>
+        <div class="col"><div class="card indicator-card h-100"><div class="card-body"><p class="indicator-label">Porcentaje de cerrados</p><p class="indicator-value mb-0">{{ resumen.porcentaje_cerrados|floatformat:"-1" }}%</p></div></div></div>
+    </div>
 </section>
+
+{% if mostrar_analisis %}
+<div class="row g-4 mb-4">
+    <div class="col-12 col-xxl-8">
+        <section class="card dashboard-card h-100" aria-labelledby="grafica-titulo">
+            <div class="card-header"><h2 class="h5 mb-0" id="grafica-titulo">Incidentes por día</h2></div>
+            <div class="card-body">
+                {% if datos_grafica %}
+                    <div class="chart-wrap"><canvas id="incidentes-por-dia" role="img" aria-label="Gráfica de incidentes agrupados por día"></canvas></div>
+                    {{ datos_grafica|json_script:"datos-incidentes-dia" }}
+                    <p id="grafica-error" class="text-secondary small mt-2 mb-0 d-none">No se pudo cargar la gráfica.</p>
+                {% else %}
+                    <p class="empty-message mb-0">No hay datos disponibles</p>
+                {% endif %}
+            </div>
+        </section>
+    </div>
+    <div class="col-12 col-xxl-4">
+        <div class="row g-4">
+            <div class="col-12 col-md-6 col-xxl-12">
+                <section class="card dashboard-card" aria-labelledby="tipos-titulo">
+                    <div class="card-header"><h2 class="h5 mb-0" id="tipos-titulo">Incidentes por tipo</h2></div>
+                    <div class="card-body">
+                        {% if tipos %}
+                            <ul class="summary-list mb-0">{% for fila in tipos %}<li><span>{{ fila.tipo_incidente }}</span><strong>{{ fila.cantidad }}</strong></li>{% endfor %}</ul>
+                        {% else %}<p class="empty-message mb-0">No hay datos disponibles</p>{% endif %}
+                    </div>
+                </section>
+            </div>
+            <div class="col-12 col-md-6 col-xxl-12">
+                <section class="card dashboard-card" aria-labelledby="prioridades-titulo">
+                    <div class="card-header"><h2 class="h5 mb-0" id="prioridades-titulo">Incidentes por prioridad</h2></div>
+                    <div class="card-body">
+                        {% if prioridades %}
+                            <ul class="summary-list mb-0">{% for fila in prioridades %}<li><span>{{ fila.prioridad }}</span><strong>{{ fila.cantidad }}</strong></li>{% endfor %}</ul>
+                        {% else %}<p class="empty-message mb-0">No hay datos disponibles</p>{% endif %}
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<section class="card dashboard-card" aria-labelledby="recientes-titulo">
+    <div class="card-header"><h2 class="h5 mb-0" id="recientes-titulo">Incidentes recientes</h2></div>
+    <div class="card-body p-0">
+        {% if recientes %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead><tr><th scope="col">ID</th><th scope="col">Fecha y hora</th><th scope="col">Tipo</th><th scope="col">Ubicación</th><th scope="col">Prioridad</th><th scope="col">Estado</th><th scope="col">Operador responsable</th></tr></thead>
+                    <tbody>
+                        {% for incidente in recientes %}
+                            <tr><td>{{ incidente.id }}</td><td class="text-nowrap">{{ incidente.fecha_hora_reporte|date:"d/m/Y H:i" }}</td><td>{{ incidente.tipo_incidente }}</td><td>{{ incidente.ubicacion }}</td><td>{{ incidente.prioridad }}</td><td>{{ incidente.get_estado_display }}</td><td>{{ incidente.operador_responsable.username }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="empty-message p-4 mb-0">No hay datos disponibles</p>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+    {% if mostrar_analisis and datos_grafica %}
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js" defer></script>
+        <script src="{% static 'js/dashboard.js' %}" defer></script>
+    {% endif %}
 {% endblock %}
