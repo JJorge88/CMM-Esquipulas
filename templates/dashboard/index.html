@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+
+{% block title %}Inicio | CMM Esquipulas{% endblock %}
+
+{% block content %}
+<section class="welcome-panel rounded-4 p-4 p-lg-5" aria-labelledby="bienvenida-titulo">
+    <p class="text-uppercase small fw-semibold text-primary mb-2">Panel principal</p>
+    <h1 class="h2 mb-3" id="bienvenida-titulo">Bienvenido, {{ nombre_usuario }}</h1>
+    <p class="mb-0 text-secondary">Rol: <strong class="text-body">{{ rol_usuario }}</strong></p>
+</section>
+{% endblock %}

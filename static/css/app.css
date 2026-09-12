@@ -1,0 +1,44 @@
+:root {
+    --cmm-azul: #16324f;
+    --cmm-azul-claro: #23527a;
+    --cmm-fondo: #f4f7fa;
+}
+
+body {
+    min-height: 100vh;
+    background: var(--cmm-fondo);
+    color: #1f2937;
+}
+
+.app-header {
+    background: var(--cmm-azul);
+}
+
+.navbar-brand {
+    letter-spacing: .01em;
+}
+
+.nav-pendiente {
+    opacity: .7;
+    cursor: default;
+}
+
+.app-main {
+    min-height: calc(100vh - 64px);
+}
+
+.login-area {
+    min-height: min(720px, calc(100vh - 170px));
+}
+
+.login-card,
+.welcome-panel {
+    background: #fff;
+}
+
+.btn-primary {
+    --bs-btn-bg: var(--cmm-azul-claro);
+    --bs-btn-border-color: var(--cmm-azul-claro);
+    --bs-btn-hover-bg: var(--cmm-azul);
+    --bs-btn-hover-border-color: var(--cmm-azul);
+}
