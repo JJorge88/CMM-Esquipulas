@@ -27,7 +27,11 @@ def obtener_navegacion(usuario):
     menu.extend(
         {
             "titulo": titulo,
-            "url": "incidents:list" if titulo == "Incidentes" else "#",
+            "url": (
+                "incidents:list" if titulo == "Incidentes"
+                else "accounts:user_list" if titulo == "Usuarios"
+                else "#"
+            ),
         }
         for titulo in SECCIONES_POR_ROL.get(rol, ())
     )

@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if creacion %}Nuevo usuario{% else %}Editar usuario{% endif %} | CMM Esquipulas{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <p class="section-eyebrow mb-1">ADMINISTRACIÓN DE USUARIOS</p>
+    <h1 class="h2 mb-1">{% if creacion %}Nuevo usuario{% else %}Editar usuario{% endif %}</h1>
+    {% if not creacion %}<p class="text-secondary mb-0">{{ usuario_editado.username }}</p>{% endif %}
+</div>
+
+<form method="post" class="user-form" novalidate>
+    {% csrf_token %}
+    {% if formulario.non_field_errors %}<div class="alert alert-danger" role="alert">{{ formulario.non_field_errors }}</div>{% endif %}
+
+    <section class="card dashboard-card mb-4" aria-labelledby="personal-titulo">
+        <div class="card-header"><h2 class="h5 mb-0" id="personal-titulo">Información personal</h2></div>
+        <div class="card-body row g-3">
+            {% for campo in formulario %}
+                {% if campo.name == 'first_name' or campo.name == 'last_name' or campo.name == 'email' or campo.name == 'telefono' %}
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                        {{ campo }}
+                        {% for error in campo.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="card dashboard-card mb-4" aria-labelledby="cuenta-titulo">
+        <div class="card-header"><h2 class="h5 mb-0" id="cuenta-titulo">Cuenta</h2></div>
+        <div class="card-body row g-3">
+            <div class="col-12 col-md-6">
+                <label class="form-label" for="{{ formulario.username.id_for_label }}">{{ formulario.username.label }}</label>
+                {{ formulario.username }}
+                {% for error in formulario.username.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label" for="{{ formulario.rol.id_for_label }}">{{ formulario.rol.label }}</label>
+                {{ formulario.rol }}
+                {% if formulario.rol.field.disabled %}<div class="form-text">No puede cambiar su propio rol.</div>{% endif %}
+                {% for error in formulario.rol.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-12">
+                <div class="form-check">
+                    {{ formulario.estado_activo }}
+                    <label class="form-check-label" for="{{ formulario.estado_activo.id_for_label }}">{{ formulario.estado_activo.label }}</label>
+                </div>
+                {% for error in formulario.estado_activo.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+        </div>
+    </section>
+
+    {% if creacion %}
+        <section class="card dashboard-card mb-4" aria-labelledby="seguridad-titulo">
+            <div class="card-header"><h2 class="h5 mb-0" id="seguridad-titulo">Seguridad</h2></div>
+            <div class="card-body row g-3">
+                <div class="col-12 col-md-6">
+                    <label class="form-label" for="{{ formulario.password1.id_for_label }}">{{ formulario.password1.label }}</label>
+                    {{ formulario.password1 }}
+                    {% for error in formulario.password1.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="col-12 col-md-6">
+                    <label class="form-label" for="{{ formulario.password2.id_for_label }}">{{ formulario.password2.label }}</label>
+                    {{ formulario.password2 }}
+                    {% for error in formulario.password2.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                </div>
+            </div>
+        </section>
+    {% endif %}
+
+    <div class="d-flex flex-wrap justify-content-end gap-2">
+        <a class="btn btn-outline-secondary" href="{% url 'accounts:user_list' %}">Cancelar</a>
+        <button class="btn btn-primary" type="submit">Guardar usuario</button>
+    </div>
+</form>
+{% endblock %}

@@ -21,7 +21,7 @@
                     {% if opcion.url == '#' %}
                         <span class="sidebar-link nav-pendiente" aria-disabled="true">{{ opcion.titulo }}</span>
                     {% else %}
-                        <a class="sidebar-link {% if opcion.titulo == 'Inicio' and request.path == '/dashboard/' or opcion.titulo == 'Incidentes' and '/incidentes/' in request.path %}active{% endif %}" href="{% url opcion.url %}">{{ opcion.titulo }}</a>
+                        <a class="sidebar-link {% if opcion.titulo == 'Inicio' and request.path == '/dashboard/' or opcion.titulo == 'Incidentes' and '/incidentes/' in request.path or opcion.titulo == 'Usuarios' and '/usuarios/' in request.path %}active{% endif %}" href="{% url opcion.url %}">{{ opcion.titulo }}</a>
                     {% endif %}
                 {% endfor %}
             </nav>
