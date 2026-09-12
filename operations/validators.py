@@ -26,6 +26,11 @@ def validar_operador(usuario):
             }
         )
 
+    if not usuario.is_active:
+        raise ValidationError(
+            {"operador": "El operador debe tener una cuenta activa."}
+        )
+
 
 def intervalo_turno(fecha, turno):
     inicio = datetime.combine(fecha, turno.hora_inicio)

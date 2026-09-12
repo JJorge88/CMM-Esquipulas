@@ -6,26 +6,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}CMM Esquipulas{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" rel="stylesheet" integrity="sha384-CK2SzKma4jA5H/MXDUU7i1TqZlCFaD4T01vtyDFvPlD97JQyS+IsSh1nI2EFbpyk" crossorigin="anonymous">
     <link href="{% static 'css/app.css' %}" rel="stylesheet">
 </head>
 <body>
     {% if request.user.is_authenticated %}
         <aside class="app-sidebar d-none d-lg-flex flex-column" aria-label="Navegación principal">
             <a class="sidebar-brand" href="{% url 'inicio' %}">
-                <span class="brand-mark" aria-hidden="true">CMM</span>
-                <span><strong>CMM Esquipulas</strong><small>Centro de Monitoreo Municipal</small></span>
+                <span class="brand-mark" aria-hidden="true"><i class="bi bi-shield-check"></i></span>
+                <span class="brand-copy"><strong>CMM<br>Esquipulas</strong><small>Centro de Monitoreo</small></span>
             </a>
-            <div class="sidebar-caption">MENÚ PRINCIPAL</div>
+            {% if puede_registrar_incidente %}
+                <a class="sidebar-action" href="{% url 'incidents:create' %}"><i class="bi bi-plus-lg" aria-hidden="true"></i> Registrar incidente</a>
+            {% endif %}
+            <div class="sidebar-caption">NAVEGACIÓN</div>
             <nav class="sidebar-nav" aria-label="Secciones">
                 {% for opcion in menu %}
                     {% if opcion.url == '#' %}
-                        <span class="sidebar-link nav-pendiente" aria-disabled="true">{{ opcion.titulo }}</span>
+                        <span class="sidebar-link nav-pendiente" aria-disabled="true"><i class="bi nav-symbol {% if opcion.titulo == 'Operación' %}bi-gear{% elif opcion.titulo == 'Reportes' %}bi-file-earmark-text{% else %}bi-grid{% endif %}" aria-hidden="true"></i>{{ opcion.titulo }}</span>
                     {% else %}
-                        <a class="sidebar-link {% if opcion.titulo == 'Inicio' and request.path == '/dashboard/' or opcion.titulo == 'Incidentes' and '/incidentes/' in request.path or opcion.titulo == 'Usuarios' and '/usuarios/' in request.path %}active{% endif %}" href="{% url opcion.url %}">{{ opcion.titulo }}</a>
+                        <a class="sidebar-link {% if opcion.titulo == 'Inicio' and request.path == '/dashboard/' or opcion.titulo == 'Incidentes' and '/incidentes/' in request.path or opcion.titulo == 'Usuarios' and '/usuarios/' in request.path or opcion.titulo == 'Operación' and '/operacion/' in request.path %}active{% endif %}" href="{% url opcion.url %}" {% if opcion.titulo == 'Inicio' %}aria-label="Inicio: Panel principal"{% endif %}><i class="bi nav-symbol {% if opcion.titulo == 'Inicio' %}bi-grid-1x2{% elif opcion.titulo == 'Incidentes' %}bi-exclamation-triangle{% elif opcion.titulo == 'Usuarios' %}bi-people{% elif opcion.titulo == 'Operación' %}bi-clock-history{% else %}bi-grid{% endif %}" aria-hidden="true"></i>{% if opcion.titulo == 'Inicio' %}Panel principal{% else %}{{ opcion.titulo }}{% endif %}</a>
+                        {% for subopcion in opcion.subopciones %}<a class="sidebar-sublink {% if subopcion.titulo == 'Turnos' and '/operacion/turnos/' in request.path or subopcion.titulo == 'Asignaciones' and '/operacion/asignaciones/' in request.path %}active{% endif %}" href="{% url subopcion.url %}">{{ subopcion.titulo }}</a>{% endfor %}
                     {% endif %}
                 {% endfor %}
+                {% if mostrar_mis_turnos %}<a class="sidebar-link {% if '/operacion/asignaciones/' in request.path %}active{% endif %}" href="{% url 'operations:assignment_list' %}"><i class="bi bi-calendar-week nav-symbol" aria-hidden="true"></i>Mis turnos</a>{% endif %}
             </nav>
-            <p class="sidebar-foot mt-auto mb-0">Gestión operativa institucional</p>
+            <p class="sidebar-foot mt-auto mb-0">Centro de Monitoreo Municipal<br>Esquipulas, Chiquimula</p>
         </aside>
     {% endif %}
 
@@ -37,9 +43,10 @@
                         <button class="navbar-toggler d-lg-none" type="button" data-bs-toggle="collapse" data-bs-target="#menuMovil" aria-controls="menuMovil" aria-expanded="false" aria-label="Mostrar menú">
                             <span class="navbar-toggler-icon"></span>
                         </button>
-                        <span class="header-title">Panel de monitoreo</span>
+                        <span class="header-title">Panel de Control Operativo</span>
                     </div>
                     <div class="d-flex align-items-center gap-3 ms-auto">
+                        <a class="header-shortcut d-none d-md-inline-flex" href="{% url 'dashboard' %}">Resumen operativo</a>
                         <div class="user-meta small text-end">
                             <span class="d-block fw-semibold">{{ request.user.get_full_name|default:request.user.username }}</span>
                             <span class="d-block text-secondary">{{ rol_usuario }}</span>
@@ -51,13 +58,16 @@
                     </div>
                     <div class="collapse w-100 d-lg-none" id="menuMovil">
                         <nav class="mobile-nav pt-3" aria-label="Secciones móviles">
+                            {% if puede_registrar_incidente %}<a class="sidebar-action mb-2" href="{% url 'incidents:create' %}"><i class="bi bi-plus-lg" aria-hidden="true"></i> Registrar incidente</a>{% endif %}
                             {% for opcion in menu %}
                                 {% if opcion.url == '#' %}
                                     <span class="mobile-link nav-pendiente" aria-disabled="true">{{ opcion.titulo }}</span>
                                 {% else %}
-                                    <a class="mobile-link" href="{% url opcion.url %}">{{ opcion.titulo }}</a>
+                                    <a class="mobile-link" href="{% url opcion.url %}" {% if opcion.titulo == 'Inicio' %}aria-label="Inicio: Panel principal"{% endif %}>{% if opcion.titulo == 'Inicio' %}Panel principal{% else %}{{ opcion.titulo }}{% endif %}</a>
+                                    {% for subopcion in opcion.subopciones %}<a class="mobile-sublink" href="{% url subopcion.url %}">{{ subopcion.titulo }}</a>{% endfor %}
                                 {% endif %}
                             {% endfor %}
+                            {% if mostrar_mis_turnos %}<a class="mobile-link" href="{% url 'operations:assignment_list' %}">Mis turnos</a>{% endif %}
                         </nav>
                     </div>
                 {% else %}

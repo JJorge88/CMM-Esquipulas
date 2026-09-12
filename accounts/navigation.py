@@ -10,7 +10,7 @@ SECCIONES_POR_ROL = {
     ),
     PerfilUsuario.Rol.OPERADOR: ("Incidentes",),
     PerfilUsuario.Rol.CONSULTA: ("Incidentes", "Reportes"),
-    PerfilUsuario.Rol.AUDITOR: ("Incidentes", "Reportes"),
+    PerfilUsuario.Rol.AUDITOR: ("Incidentes", "Operación", "Reportes"),
 }
 
 ROLES_REGISTRO_INCIDENTES = (
@@ -30,7 +30,15 @@ def obtener_navegacion(usuario):
             "url": (
                 "incidents:list" if titulo == "Incidentes"
                 else "accounts:user_list" if titulo == "Usuarios"
+                else "operations:turn_list" if titulo == "Operación"
                 else "#"
+            ),
+            "subopciones": (
+                (
+                    {"titulo": "Turnos", "url": "operations:turn_list"},
+                    {"titulo": "Asignaciones", "url": "operations:assignment_list"},
+                )
+                if titulo == "Operación" else ()
             ),
         }
         for titulo in SECCIONES_POR_ROL.get(rol, ())
@@ -39,4 +47,5 @@ def obtener_navegacion(usuario):
         "menu": menu,
         "rol_usuario": perfil.get_rol_display() if perfil else "Sin rol asignado",
         "puede_registrar_incidente": rol in ROLES_REGISTRO_INCIDENTES,
+        "mostrar_mis_turnos": rol == PerfilUsuario.Rol.OPERADOR,
     }
