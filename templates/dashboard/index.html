@@ -34,12 +34,16 @@
 {% endif %}
 
 <section aria-label="Indicadores de incidentes" class="metrics-grid mb-4">
-    <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-5 g-3">
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3">
         <div class="col"><div class="card indicator-card h-100"><div class="card-body"><p class="indicator-label">Total de incidentes</p><p class="indicator-value mb-0">{{ resumen.total_incidentes }}</p></div></div></div>
+        <div class="col"><div class="card indicator-card h-100"><div class="card-body"><p class="indicator-label">Registrados</p><p class="indicator-value mb-0">{{ resumen.registrados }}</p></div></div></div>
         <div class="col"><div class="card indicator-card h-100"><div class="card-body"><p class="indicator-label">Pendientes</p><p class="indicator-value mb-0">{{ resumen.pendientes }}</p></div></div></div>
         <div class="col"><div class="card indicator-card h-100"><div class="card-body"><p class="indicator-label">En seguimiento</p><p class="indicator-value mb-0">{{ resumen.en_seguimiento }}</p></div></div></div>
+        <div class="col"><div class="card indicator-card h-100"><div class="card-body"><p class="indicator-label">Resueltos</p><p class="indicator-value mb-0">{{ resumen.resueltos }}</p></div></div></div>
         <div class="col"><div class="card indicator-card h-100"><div class="card-body"><p class="indicator-label">Cerrados</p><p class="indicator-value mb-0">{{ resumen.cerrados }}</p></div></div></div>
         <div class="col"><div class="card indicator-card h-100"><div class="card-body"><p class="indicator-label">Porcentaje de cerrados</p><p class="indicator-value mb-0">{{ resumen.porcentaje_cerrados|floatformat:"-1" }}%</p></div></div></div>
+        <div class="col"><div class="card indicator-card h-100"><div class="card-body"><p class="indicator-label">Tiempo promedio de atención</p><p class="indicator-value mb-0 fs-5">{{ resumen.tiempo_promedio_atencion|default_if_none:"Sin datos" }}</p></div></div></div>
+        <div class="col"><div class="card indicator-card h-100"><div class="card-body"><p class="indicator-label">Tiempo promedio de resolución</p><p class="indicator-value mb-0 fs-5">{{ resumen.tiempo_promedio_resolucion|default_if_none:"Sin datos" }}</p></div></div></div>
     </div>
 </section>
 

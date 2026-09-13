@@ -56,7 +56,7 @@
                             <td>{{ incidente.ubicacion }}</td>
                             <td><span class="priority-pill">{{ incidente.prioridad }}</span></td>
                             <td>
-                                <span class="badge {% if incidente.estado == 'CERRADO' %}text-bg-secondary{% elif incidente.estado == 'EN_SEGUIMIENTO' %}text-bg-info{% else %}text-bg-warning{% endif %}">
+                                <span class="badge {% if incidente.estado == 'CERRADO' %}text-bg-secondary{% elif incidente.estado == 'RESUELTO' %}text-bg-success{% elif incidente.estado == 'EN_SEGUIMIENTO' %}text-bg-info{% elif incidente.estado == 'REGISTRADO' %}text-bg-primary{% else %}text-bg-warning{% endif %}">
                                     {{ incidente.get_estado_display }}
                                 </span>
                             </td>

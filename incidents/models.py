@@ -2,6 +2,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
@@ -19,8 +20,10 @@ def ruta_evidencia_incidente(instancia, nombre_archivo):
 
 class Incidente(models.Model):
     class Estado(models.TextChoices):
-        PENDIENTE = "PENDIENTE", "Pendiente"
+        REGISTRADO = "REGISTRADO", "Registrado"
+        PENDIENTE = "PENDIENTE", "Pendiente de atención"
         EN_SEGUIMIENTO = "EN_SEGUIMIENTO", "En seguimiento"
+        RESUELTO = "RESUELTO", "Resuelto"
         CERRADO = "CERRADO", "Cerrado"
 
     fecha_hora_reporte = models.DateTimeField()
@@ -36,8 +39,12 @@ class Incidente(models.Model):
     estado = models.CharField(
         max_length=14,
         choices=Estado.choices,
-        default=Estado.PENDIENTE,
+        default=Estado.REGISTRADO,
     )
+    resultado_cierre = models.TextField(blank=True)
+    fecha_inicio_atencion = models.DateTimeField(null=True, blank=True)
+    fecha_resolucion = models.DateTimeField(null=True, blank=True)
+    fecha_cierre = models.DateTimeField(null=True, blank=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
 
@@ -45,6 +52,19 @@ class Incidente(models.Model):
         ordering = ("-fecha_hora_reporte",)
         verbose_name = "incidente"
         verbose_name_plural = "incidentes"
+
+    def clean(self):
+        super().clean()
+        if self.estado == self.Estado.CERRADO and not self.resultado_cierre.strip():
+            estado_anterior = None
+            if self.pk:
+                estado_anterior = type(self).objects.filter(pk=self.pk).values_list(
+                    "estado", flat=True
+                ).first()
+            if estado_anterior != self.Estado.CERRADO:
+                raise ValidationError({
+                    "resultado_cierre": "Debe registrar el resultado para cerrar el incidente."
+                })
 
     def __str__(self):
         fecha = self.fecha_hora_reporte.strftime("%d/%m/%Y %H:%M")

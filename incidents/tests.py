@@ -32,6 +32,7 @@ class RegistrarSeguimientoTests(TestCase):
             prioridad="Prioridad de prueba",
             descripcion="Incidente utilizado por las pruebas.",
             operador_responsable=cls.usuario,
+            estado=Incidente.Estado.PENDIENTE,
         )
 
     def test_pendiente_a_en_seguimiento(self):
@@ -86,24 +87,31 @@ class RegistrarSeguimientoTests(TestCase):
             Incidente.Estado.EN_SEGUIMIENTO,
         )
 
-    def test_en_seguimiento_a_cerrado(self):
+    def test_resuelto_a_cerrado(self):
         registrar_seguimiento(
             incidente=self.incidente,
             usuario=self.usuario,
             observacion="Se inició la atención.",
             estado_nuevo=Incidente.Estado.EN_SEGUIMIENTO,
         )
+        registrar_seguimiento(
+            incidente=self.incidente,
+            usuario=self.usuario,
+            observacion="Incidente resuelto.",
+            estado_nuevo=Incidente.Estado.RESUELTO,
+        )
         seguimiento = registrar_seguimiento(
             incidente=self.incidente,
             usuario=self.usuario,
             observacion="Atención finalizada.",
             estado_nuevo=Incidente.Estado.CERRADO,
+            resultado_cierre="Atención concluida sin pendientes.",
         )
 
         self.incidente.refresh_from_db()
         self.assertEqual(
             seguimiento.estado_anterior,
-            Incidente.Estado.EN_SEGUIMIENTO,
+            Incidente.Estado.RESUELTO,
         )
         self.assertEqual(
             seguimiento.estado_nuevo,
@@ -118,8 +126,15 @@ class RegistrarSeguimientoTests(TestCase):
         registrar_seguimiento(
             incidente=self.incidente,
             usuario=self.usuario,
+            observacion="Se resolvió el incidente.",
+            estado_nuevo=Incidente.Estado.RESUELTO,
+        )
+        registrar_seguimiento(
+            incidente=self.incidente,
+            usuario=self.usuario,
             observacion="Se cerró el incidente.",
             estado_nuevo=Incidente.Estado.CERRADO,
+            resultado_cierre="Resultado documentado.",
         )
         cantidad_inicial = self.incidente.seguimientos.count()
 

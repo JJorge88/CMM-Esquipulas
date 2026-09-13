@@ -51,6 +51,7 @@ class DetalleIncidenteWebTests(TestCase):
             prioridad="Urgente",
             descripcion="Descripción detallada del reporte.",
             operador_responsable=cls.usuario,
+            estado=Incidente.Estado.PENDIENTE,
         )
         cls.otro_incidente = Incidente.objects.create(
             fecha_hora_reporte=cls.fecha,
@@ -227,7 +228,7 @@ class DetalleIncidenteWebTests(TestCase):
         ].choices)
         self.assertEqual(
             set(opciones),
-            {Incidente.Estado.EN_SEGUIMIENTO, Incidente.Estado.CERRADO},
+            {Incidente.Estado.EN_SEGUIMIENTO, Incidente.Estado.RESUELTO},
         )
 
     def test_servicio_rechaza_transicion_y_muestra_error(self):

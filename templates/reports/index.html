@@ -10,12 +10,16 @@
 {% url 'reports:index' as filtro_accion %}{% include 'reports/_filters.html' %}
 <section class="row g-3 mb-4" aria-label="Indicadores de incidentes">
     <div class="col-6 col-xl-3"><div class="card indicator-card h-100"><div class="card-body"><p class="indicator-label">Total de incidentes</p><p class="indicator-value mb-0">{{ resumen.total_incidentes }}</p></div></div></div>
+    <div class="col-6 col-xl-3"><div class="card indicator-card h-100"><div class="card-body"><p class="indicator-label">Registrados</p><p class="indicator-value mb-0">{{ resumen.registrados }}</p></div></div></div>
     <div class="col-6 col-xl-3"><div class="card indicator-card h-100"><div class="card-body"><p class="indicator-label">Pendientes</p><p class="indicator-value mb-0">{{ resumen.pendientes }}</p></div></div></div>
     <div class="col-6 col-xl-3"><div class="card indicator-card h-100"><div class="card-body"><p class="indicator-label">En seguimiento</p><p class="indicator-value mb-0">{{ resumen.en_seguimiento }}</p></div></div></div>
+    <div class="col-6 col-xl-3"><div class="card indicator-card h-100"><div class="card-body"><p class="indicator-label">Resueltos</p><p class="indicator-value mb-0">{{ resumen.resueltos }}</p></div></div></div>
     <div class="col-6 col-xl-3"><div class="card indicator-card h-100"><div class="card-body"><p class="indicator-label">Cerrados</p><p class="indicator-value mb-0">{{ resumen.cerrados }}</p></div></div></div>
     <div class="col-6 col-xl-4"><div class="card indicator-card h-100"><div class="card-body"><p class="indicator-label">Porcentaje de cerrados</p><p class="indicator-value mb-0">{{ resumen.porcentaje_cerrados|floatformat:1 }} %</p></div></div></div>
     <div class="col-6 col-xl-4"><div class="card indicator-card h-100"><div class="card-body"><p class="indicator-label">Total de evidencias</p><p class="indicator-value mb-0">{{ resumen.total_evidencias }}</p></div></div></div>
     <div class="col-6 col-xl-4"><div class="card indicator-card h-100"><div class="card-body"><p class="indicator-label">Total de seguimientos</p><p class="indicator-value mb-0">{{ resumen.total_seguimientos }}</p></div></div></div>
+    <div class="col-6 col-xl-6"><div class="card indicator-card h-100"><div class="card-body"><p class="indicator-label">Tiempo promedio de atención</p><p class="indicator-value mb-0 fs-5">{{ resumen.tiempo_promedio_atencion|default_if_none:"Sin datos" }}</p></div></div></div>
+    <div class="col-6 col-xl-6"><div class="card indicator-card h-100"><div class="card-body"><p class="indicator-label">Tiempo promedio de resolución</p><p class="indicator-value mb-0 fs-5">{{ resumen.tiempo_promedio_resolucion|default_if_none:"Sin datos" }}</p></div></div></div>
 </section>
 {% if not resumen.total_incidentes %}<div class="alert alert-info mb-4" role="status">No hay datos disponibles para los filtros seleccionados.</div>{% endif %}
 <div id="graficas-error" class="alert alert-warning d-none" role="alert">No se pudieron cargar las gráficas. Los indicadores siguen disponibles.</div>

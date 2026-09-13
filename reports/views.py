@@ -45,9 +45,12 @@ def _valores(filas, etiqueta):
 def panel_estadistico(request):
     filtros, criterios, filtros_activos = _filtros(request)
     resumen = {
-        "total_incidentes": 0, "pendientes": 0, "en_seguimiento": 0,
-        "cerrados": 0, "porcentaje_cerrados": 0,
+        "total_incidentes": 0, "registrados": 0, "pendientes": 0,
+        "en_seguimiento": 0, "resueltos": 0, "cerrados": 0,
+        "porcentaje_cerrados": 0,
         "total_evidencias": 0, "total_seguimientos": 0,
+        "tiempo_promedio_atencion": None,
+        "tiempo_promedio_resolucion": None,
     }
     graficas = {
         nombre: {"labels": [], "values": []}

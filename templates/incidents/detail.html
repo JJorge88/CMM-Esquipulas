@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Incidente {{ incidente.id }} | CMM Esquipulas{% endblock %}
 
@@ -16,7 +17,7 @@
         <section class="card dashboard-card incident-info-card mb-4" aria-labelledby="informacion-titulo">
             <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <h2 class="h5 mb-0" id="informacion-titulo">Información del incidente</h2>
-                <span class="badge {% if cerrado %}text-bg-secondary{% elif incidente.estado == 'EN_SEGUIMIENTO' %}text-bg-info{% else %}text-bg-warning{% endif %}">{{ incidente.get_estado_display }}</span>
+                <span class="badge {% if cerrado %}text-bg-secondary{% elif incidente.estado == 'RESUELTO' %}text-bg-success{% elif incidente.estado == 'EN_SEGUIMIENTO' %}text-bg-info{% elif incidente.estado == 'REGISTRADO' %}text-bg-primary{% else %}text-bg-warning{% endif %}">{{ incidente.get_estado_display }}</span>
             </div>
             <div class="card-body">
                 <dl class="row mb-0 incident-facts">
@@ -29,6 +30,9 @@
                     <div class="col-12 col-sm-6"><dt>Operador responsable</dt><dd>{{ incidente.operador_responsable.username }}</dd></div>
                     <div class="col-12 col-sm-6"><dt>Fecha de creación</dt><dd>{{ incidente.fecha_creacion|date:"d/m/Y H:i" }}</dd></div>
                     <div class="col-12 col-sm-6"><dt>Última actualización</dt><dd>{{ incidente.fecha_actualizacion|date:"d/m/Y H:i" }}</dd></div>
+                    <div class="col-12 col-sm-6"><dt>Inicio de atención</dt><dd>{{ incidente.fecha_inicio_atencion|date:"d/m/Y H:i"|default:"No registrado" }}</dd></div>
+                    <div class="col-12 col-sm-6"><dt>Resolución</dt><dd>{{ incidente.fecha_resolucion|date:"d/m/Y H:i"|default:"No registrada" }}</dd></div>
+                    <div class="col-12 col-sm-6"><dt>Cierre</dt><dd>{{ incidente.fecha_cierre|date:"d/m/Y H:i"|default:"No registrado" }}</dd></div>
                 </dl>
             </div>
         </section>
@@ -37,6 +41,13 @@
             <div class="card-header"><h2 class="h5 mb-0" id="descripcion-titulo">Descripción</h2></div>
             <div class="card-body"><p class="incident-description mb-0 incident-text">{{ incidente.descripcion|linebreaksbr }}</p></div>
         </section>
+
+        {% if incidente.resultado_cierre %}
+            <section class="card dashboard-card mb-4" aria-labelledby="resultado-cierre-titulo">
+                <div class="card-header"><h2 class="h5 mb-0" id="resultado-cierre-titulo">Resultado del incidente</h2></div>
+                <div class="card-body"><p class="incident-description mb-0 incident-text">{{ incidente.resultado_cierre|linebreaksbr }}</p></div>
+            </section>
+        {% endif %}
 
         <section class="card dashboard-card mb-4" aria-labelledby="instituciones-titulo">
             <div class="card-header"><h2 class="h5 mb-0" id="instituciones-titulo">Instituciones participantes</h2></div>
@@ -137,7 +148,7 @@
                         <input type="hidden" name="accion" value="seguimiento">
                         {% if formulario_seguimiento.non_field_errors %}<div class="alert alert-warning" role="alert">{{ formulario_seguimiento.non_field_errors }}</div>{% endif %}
                         {% for campo in formulario_seguimiento %}
-                            <div class="mb-3">
+                            <div class="mb-3 {% if campo.name == 'resultado_cierre' and formulario_seguimiento.data.estado_nuevo != 'CERRADO' %}d-none{% endif %}" {% if campo.name == 'resultado_cierre' %}id="resultado-cierre-container"{% endif %}>
                                 <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
                                 {{ campo }}
                                 {% for error in campo.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
@@ -150,4 +161,7 @@
         {% endif %}
     </div>
 </div>
+{% endblock %}
+{% block scripts %}
+    <script src="{% static 'js/incident_detail.js' %}" defer></script>
 {% endblock %}

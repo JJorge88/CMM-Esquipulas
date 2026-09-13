@@ -130,12 +130,12 @@ class IncidentesWebTests(TestCase):
             self.client.get(reverse("incidents:create")).status_code, 403
         )
 
-    def test_creacion_asigna_usuario_y_estado_pendiente(self):
+    def test_creacion_asigna_usuario_y_estado_registrado(self):
         self.client.force_login(self.usuario)
         self.client.post(reverse("incidents:create"), self.datos_registro())
         incidente = Incidente.objects.get(ubicacion="Zona municipal")
         self.assertEqual(incidente.operador_responsable, self.usuario)
-        self.assertEqual(incidente.estado, Incidente.Estado.PENDIENTE)
+        self.assertEqual(incidente.estado, Incidente.Estado.REGISTRADO)
         self.assertIsNotNone(incidente.fecha_creacion)
 
     def test_post_manipulado_no_cambia_operador_ni_estado(self):
@@ -149,7 +149,7 @@ class IncidentesWebTests(TestCase):
         )
         incidente = Incidente.objects.get(ubicacion="Zona municipal")
         self.assertEqual(incidente.operador_responsable, self.usuario)
-        self.assertEqual(incidente.estado, Incidente.Estado.PENDIENTE)
+        self.assertEqual(incidente.estado, Incidente.Estado.REGISTRADO)
 
     def test_registro_requiere_csrf(self):
         cliente = Client(enforce_csrf_checks=True)

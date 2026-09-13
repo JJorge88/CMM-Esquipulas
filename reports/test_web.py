@@ -138,7 +138,7 @@ class ReportesWebTests(TestCase):
     def test_n_o_p_graficas_estado_tipo_prioridad(self):
         self.entrar()
         graficas = self.pagina().context["graficas"]
-        self.assertEqual(graficas["estado"]["values"], [1, 1, 2])
+        self.assertEqual(graficas["estado"]["values"], [0, 1, 1, 0, 2])
         self.assertEqual(dict(zip(graficas["tipo"]["labels"], graficas["tipo"]["values"]))["Tránsito"], 2)
         self.assertEqual(dict(zip(graficas["prioridad"]["labels"], graficas["prioridad"]["values"]))["Alta"], 2)
 
@@ -152,7 +152,7 @@ class ReportesWebTests(TestCase):
         self.entrar()
         respuesta = self.pagina(parametros={"estado": Incidente.Estado.PENDIENTE})
         self.assertEqual(respuesta.context["resumen"]["total_incidentes"], 1)
-        self.assertEqual(respuesta.context["graficas"]["estado"]["values"], [1, 0, 0])
+        self.assertEqual(respuesta.context["graficas"]["estado"]["values"], [0, 1, 0, 0, 0])
         self.assertEqual(respuesta.context["graficas"]["tipo"]["values"], [1])
         self.assertContains(respuesta, "Estado: Pendiente")
 

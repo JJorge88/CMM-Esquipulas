@@ -109,6 +109,11 @@ class SeguimientoForm(forms.Form):
         label="Nuevo estado",
         widget=forms.Select(attrs={"class": "form-select"}),
     )
+    resultado_cierre = forms.CharField(
+        required=False,
+        label="Resultado del incidente",
+        widget=forms.Textarea(attrs={"class": "form-control", "rows": 4}),
+    )
 
     def __init__(self, *args, estado_actual, **kwargs):
         super().__init__(*args, **kwargs)
@@ -118,6 +123,18 @@ class SeguimientoForm(forms.Form):
             for valor, etiqueta in Incidente.Estado.choices
             if valor in permitidos
         ]
+
+    def clean(self):
+        datos = super().clean()
+        if datos.get("estado_nuevo") == Incidente.Estado.CERRADO:
+            if not datos.get("resultado_cierre", "").strip():
+                self.add_error(
+                    "resultado_cierre",
+                    "Debe registrar el resultado para cerrar el incidente.",
+                )
+        else:
+            datos["resultado_cierre"] = ""
+        return datos
 
 
 class EvidenciaForm(forms.ModelForm):

@@ -1,5 +1,5 @@
 from django.core.exceptions import ValidationError
-from django.db.models import Count, F, Q
+from django.db.models import Avg, Count, F, Q
 from django.db.models.functions import TruncDate
 
 from incidents.models import Incidente, ParticipacionInstitucion
@@ -58,6 +58,9 @@ def obtener_resumen_incidentes(fecha_desde=None, fecha_hasta=None, **filtros):
     )
     resumen = incidentes.aggregate(
         total_incidentes=Count("id", distinct=True),
+        registrados=Count(
+            "id", filter=Q(estado=Incidente.Estado.REGISTRADO), distinct=True,
+        ),
         pendientes=Count(
             "id",
             filter=Q(estado=Incidente.Estado.PENDIENTE),
@@ -67,6 +70,9 @@ def obtener_resumen_incidentes(fecha_desde=None, fecha_hasta=None, **filtros):
             "id",
             filter=Q(estado=Incidente.Estado.EN_SEGUIMIENTO),
             distinct=True,
+        ),
+        resueltos=Count(
+            "id", filter=Q(estado=Incidente.Estado.RESUELTO), distinct=True,
         ),
         cerrados=Count(
             "id",
@@ -80,6 +86,12 @@ def obtener_resumen_incidentes(fecha_desde=None, fecha_hasta=None, **filtros):
     resumen["porcentaje_cerrados"] = (
         resumen["cerrados"] * 100 / total if total else 0
     )
+    resumen["tiempo_promedio_atencion"] = incidentes.filter(
+        fecha_inicio_atencion__isnull=False,
+    ).aggregate(promedio=Avg(F("fecha_inicio_atencion") - F("fecha_hora_reporte")))["promedio"]
+    resumen["tiempo_promedio_resolucion"] = incidentes.filter(
+        fecha_resolucion__isnull=False,
+    ).aggregate(promedio=Avg(F("fecha_resolucion") - F("fecha_hora_reporte")))["promedio"]
     return resumen
 
 

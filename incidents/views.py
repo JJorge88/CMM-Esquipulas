@@ -87,7 +87,7 @@ def registrar_incidente(request):
     if request.method == "POST" and formulario.is_valid():
         incidente = formulario.save(commit=False)
         incidente.operador_responsable = request.user
-        incidente.estado = Incidente.Estado.PENDIENTE
+        incidente.estado = Incidente.Estado.REGISTRADO
         incidente.save()
         messages.success(request, "Incidente registrado correctamente.")
         return redirect("incidents:list")
@@ -148,6 +148,7 @@ def detalle_incidente(request, pk):
                         usuario=request.user,
                         observacion=formulario_seguimiento.cleaned_data["observacion"],
                         estado_nuevo=formulario_seguimiento.cleaned_data["estado_nuevo"],
+                        resultado_cierre=formulario_seguimiento.cleaned_data["resultado_cierre"],
                     )
                 except ValidationError as error:
                     formulario_seguimiento.add_error(None, error)
