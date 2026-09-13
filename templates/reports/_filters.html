@@ -1,0 +1,26 @@
+<section class="card dashboard-card filter-panel mb-4" aria-label="Filtros de reportes">
+    <div class="card-body">
+        <form method="get" action="{{ filtro_accion }}">
+            <div class="row g-3 align-items-end">
+                {% for campo in filtros %}
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                        {{ campo }}
+                        {% for error in campo.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                    </div>
+                {% endfor %}
+                {% for error in filtros.non_field_errors %}<div class="col-12 text-danger">{{ error }}</div>{% endfor %}
+                <div class="col-12 d-flex flex-wrap gap-2">
+                    <button class="btn btn-primary" type="submit"><i class="bi bi-funnel me-1" aria-hidden="true"></i> Aplicar filtros</button>
+                    <a class="btn btn-outline-secondary" href="{{ filtro_accion }}">Limpiar</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</section>
+{% if filtros_activos %}
+    <section class="d-flex flex-wrap align-items-center gap-2 mb-4" aria-label="Filtros activos">
+        <span class="small text-secondary fw-semibold">Filtros activos:</span>
+        {% for etiqueta, valor in filtros_activos %}<span class="badge rounded-pill text-bg-light border text-dark">{{ etiqueta }}: {{ valor }}</span>{% endfor %}
+    </section>
+{% endif %}

@@ -26,11 +26,35 @@ def _filtrar_por_periodo(queryset, fecha_desde=None, fecha_hasta=None):
     return queryset
 
 
-def obtener_resumen_incidentes(fecha_desde=None, fecha_hasta=None):
-    incidentes = _filtrar_por_periodo(
+def _filtrar_incidentes(
+    queryset, fecha_desde=None, fecha_hasta=None, *, estado=None,
+    tipo=None, prioridad=None, operador_id=None, institucion_id=None,
+):
+    if estado is not None and estado not in Incidente.Estado.values:
+        raise ValidationError("El estado indicado no es válido.")
+    queryset = _filtrar_por_periodo(queryset, fecha_desde, fecha_hasta)
+    if estado is not None:
+        queryset = queryset.filter(estado=estado)
+    if tipo is not None:
+        queryset = queryset.filter(tipo_incidente=tipo)
+    if prioridad is not None:
+        queryset = queryset.filter(prioridad=prioridad)
+    if operador_id is not None:
+        queryset = queryset.filter(operador_responsable_id=operador_id)
+    if institucion_id is not None:
+        participaciones = ParticipacionInstitucion.objects.filter(
+            institucion_id=institucion_id
+        ).values("incidente_id")
+        queryset = queryset.filter(pk__in=participaciones)
+    return queryset
+
+
+def obtener_resumen_incidentes(fecha_desde=None, fecha_hasta=None, **filtros):
+    incidentes = _filtrar_incidentes(
         Incidente.objects.all(),
         fecha_desde,
         fecha_hasta,
+        **filtros,
     )
     resumen = incidentes.aggregate(
         total_incidentes=Count("id", distinct=True),
@@ -59,11 +83,12 @@ def obtener_resumen_incidentes(fecha_desde=None, fecha_hasta=None):
     return resumen
 
 
-def obtener_incidentes_por_estado(fecha_desde=None, fecha_hasta=None):
-    incidentes = _filtrar_por_periodo(
+def obtener_incidentes_por_estado(fecha_desde=None, fecha_hasta=None, **filtros):
+    incidentes = _filtrar_incidentes(
         Incidente.objects.all(),
         fecha_desde,
         fecha_hasta,
+        **filtros,
     )
     cantidades = {
         fila["estado"]: fila["cantidad"]
@@ -77,11 +102,12 @@ def obtener_incidentes_por_estado(fecha_desde=None, fecha_hasta=None):
     }
 
 
-def obtener_incidentes_por_tipo(fecha_desde=None, fecha_hasta=None):
-    incidentes = _filtrar_por_periodo(
+def obtener_incidentes_por_tipo(fecha_desde=None, fecha_hasta=None, **filtros):
+    incidentes = _filtrar_incidentes(
         Incidente.objects.all(),
         fecha_desde,
         fecha_hasta,
+        **filtros,
     )
     return list(
         incidentes.values("tipo_incidente")
@@ -90,11 +116,12 @@ def obtener_incidentes_por_tipo(fecha_desde=None, fecha_hasta=None):
     )
 
 
-def obtener_incidentes_por_prioridad(fecha_desde=None, fecha_hasta=None):
-    incidentes = _filtrar_por_periodo(
+def obtener_incidentes_por_prioridad(fecha_desde=None, fecha_hasta=None, **filtros):
+    incidentes = _filtrar_incidentes(
         Incidente.objects.all(),
         fecha_desde,
         fecha_hasta,
+        **filtros,
     )
     return list(
         incidentes.values("prioridad")
@@ -103,11 +130,12 @@ def obtener_incidentes_por_prioridad(fecha_desde=None, fecha_hasta=None):
     )
 
 
-def obtener_incidentes_por_operador(fecha_desde=None, fecha_hasta=None):
-    incidentes = _filtrar_por_periodo(
+def obtener_incidentes_por_operador(fecha_desde=None, fecha_hasta=None, **filtros):
+    incidentes = _filtrar_incidentes(
         Incidente.objects.all(),
         fecha_desde,
         fecha_hasta,
+        **filtros,
     )
     return list(
         incidentes.values(
@@ -124,11 +152,13 @@ def obtener_incidentes_por_operador(fecha_desde=None, fecha_hasta=None):
 def obtener_incidentes_por_institucion(
     fecha_desde=None,
     fecha_hasta=None,
+    **filtros,
 ):
-    incidentes = _filtrar_por_periodo(
+    incidentes = _filtrar_incidentes(
         Incidente.objects.all(),
         fecha_desde,
         fecha_hasta,
+        **filtros,
     )
     return list(
         ParticipacionInstitucion.objects.filter(incidente__in=incidentes)
@@ -142,11 +172,12 @@ def obtener_incidentes_por_institucion(
     )
 
 
-def obtener_incidentes_por_dia(fecha_desde=None, fecha_hasta=None):
-    incidentes = _filtrar_por_periodo(
+def obtener_incidentes_por_dia(fecha_desde=None, fecha_hasta=None, **filtros):
+    incidentes = _filtrar_incidentes(
         Incidente.objects.all(),
         fecha_desde,
         fecha_hasta,
+        **filtros,
     )
     return list(
         incidentes.annotate(fecha=TruncDate("fecha_hora_reporte"))
@@ -165,28 +196,13 @@ def buscar_incidentes(
     operador_id=None,
     institucion_id=None,
 ):
-    if estado is not None and estado not in Incidente.Estado.values:
-        raise ValidationError("El estado indicado no es válido.")
-
-    incidentes = _filtrar_por_periodo(
+    incidentes = _filtrar_incidentes(
         Incidente.objects.all(),
         fecha_desde,
         fecha_hasta,
+        estado=estado, tipo=tipo, prioridad=prioridad,
+        operador_id=operador_id, institucion_id=institucion_id,
     )
-    if estado is not None:
-        incidentes = incidentes.filter(estado=estado)
-    if tipo is not None:
-        incidentes = incidentes.filter(tipo_incidente=tipo)
-    if prioridad is not None:
-        incidentes = incidentes.filter(prioridad=prioridad)
-    if operador_id is not None:
-        incidentes = incidentes.filter(
-            operador_responsable_id=operador_id
-        )
-    if institucion_id is not None:
-        incidentes = incidentes.filter(
-            participaciones_institucionales__institucion_id=institucion_id
-        )
 
     return (
         incidentes.select_related("operador_responsable")

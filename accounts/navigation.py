@@ -31,6 +31,7 @@ def obtener_navegacion(usuario):
                 "incidents:list" if titulo == "Incidentes"
                 else "accounts:user_list" if titulo == "Usuarios"
                 else "operations:turn_list" if titulo == "Operación"
+                else "reports:index" if titulo == "Reportes"
                 else "#"
             ),
             "subopciones": (
