@@ -6,6 +6,7 @@ from .views import (
     activar_desactivar_usuario,
     crear_usuario,
     editar_usuario,
+    listar_auditoria,
     listar_usuarios,
 )
 
@@ -17,8 +18,13 @@ usuarios_urlpatterns = [
     path("<int:pk>/estado/", activar_desactivar_usuario, name="user_toggle_status"),
 ]
 
+accounts_urlpatterns = [
+    path("usuarios/", include(usuarios_urlpatterns)),
+    path("auditoria/", listar_auditoria, name="audit_list"),
+]
+
 urlpatterns = [
     path("login/", IniciarSesionView.as_view(), name="login"),
     path("logout/", CerrarSesionView.as_view(), name="logout"),
-    path("usuarios/", include((usuarios_urlpatterns, "accounts"), namespace="accounts")),
+    path("", include((accounts_urlpatterns, "accounts"), namespace="accounts")),
 ]

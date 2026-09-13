@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block title %}Auditoría | CMM Esquipulas{% endblock %}
+{% block content %}
+<div class="page-heading mb-4"><h1 class="h2 mb-1">Auditoría</h1><p class="text-secondary mb-0">Consulta de acciones relevantes registradas en el sistema.</p></div>
+<section class="card dashboard-card filter-panel mb-4" aria-label="Filtros de auditoría"><div class="card-body"><form method="get" action="{% url 'accounts:audit_list' %}"><div class="row g-3 align-items-end">
+    {% for campo in filtros %}<div class="col-12 col-md-6 col-xl-4"><label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>{{ campo }}{% for error in campo.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>{% endfor %}
+    {% for error in filtros.non_field_errors %}<div class="col-12 text-danger">{{ error }}</div>{% endfor %}
+    <div class="col-12 d-flex gap-2"><button class="btn btn-primary" type="submit">Filtrar</button><a class="btn btn-outline-secondary" href="{% url 'accounts:audit_list' %}">Limpiar</a></div>
+</div></form></div></section>
+<section class="card dashboard-card" aria-label="Registros de auditoría"><div class="card-header d-flex justify-content-between"><h2 class="h5 mb-0">Acciones registradas</h2><span class="text-secondary small">{{ pagina.paginator.count }} resultado{{ pagina.paginator.count|pluralize }}</span></div>
+{% if pagina.object_list %}<div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th scope="col">Fecha y hora</th><th scope="col">Usuario</th><th scope="col">Acción</th><th scope="col">Módulo</th><th scope="col">Entidad</th><th scope="col">Descripción</th><th scope="col">IP</th></tr></thead><tbody>
+{% for registro in pagina %}<tr><td class="text-nowrap">{{ registro.fecha_hora|date:'d/m/Y H:i:s' }}</td><td>{{ registro.usuario.username|default:'Usuario eliminado' }}</td><td><span class="badge text-bg-secondary">{{ registro.accion }}</span></td><td>{{ registro.modulo }}</td><td>{{ registro.entidad|default:'—' }}{% if registro.entidad_id %} #{{ registro.entidad_id }}{% endif %}</td><td>{{ registro.descripcion|default:'—' }}</td><td>{{ registro.ip|default:'—' }}</td></tr>{% endfor %}
+</tbody></table></div>{% else %}<p class="empty-message text-center p-5 mb-0">No hay acciones de auditoría registradas.</p>{% endif %}</section>
+{% if pagina.paginator.num_pages > 1 %}<nav class="mt-4" aria-label="Páginas de auditoría"><ul class="pagination justify-content-center"><li class="page-item {% if not pagina.has_previous %}disabled{% endif %}">{% if pagina.has_previous %}<a class="page-link" href="?{{ query_paginacion }}page={{ pagina.previous_page_number }}">Anterior</a>{% else %}<span class="page-link">Anterior</span>{% endif %}</li><li class="page-item disabled"><span class="page-link">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span></li><li class="page-item {% if not pagina.has_next %}disabled{% endif %}">{% if pagina.has_next %}<a class="page-link" href="?{{ query_paginacion }}page={{ pagina.next_page_number }}">Siguiente</a>{% else %}<span class="page-link">Siguiente</span>{% endif %}</li></ul></nav>{% endif %}
+{% endblock %}

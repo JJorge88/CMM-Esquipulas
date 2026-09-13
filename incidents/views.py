@@ -8,6 +8,7 @@ from django.db.models import Prefetch, Q
 from django.http import HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 
+from accounts.audit import registrar_auditoria
 from accounts.navigation import obtener_navegacion
 
 from .forms import (
@@ -88,7 +89,9 @@ def registrar_incidente(request):
         incidente = formulario.save(commit=False)
         incidente.operador_responsable = request.user
         incidente.estado = Incidente.Estado.REGISTRADO
-        incidente.save()
+        with transaction.atomic():
+            incidente.save()
+            registrar_auditoria(usuario=request.user, accion="CREAR", modulo="INCIDENTES", entidad="Incidente", entidad_id=incidente.pk, descripcion=f"Incidente {incidente.pk} registrado.", request=request)
         messages.success(request, "Incidente registrado correctamente.")
         return redirect("incidents:list")
 
@@ -143,13 +146,17 @@ def detalle_incidente(request, pk):
             )
             if formulario_seguimiento.is_valid():
                 try:
-                    registrar_seguimiento(
-                        incidente=incidente,
-                        usuario=request.user,
-                        observacion=formulario_seguimiento.cleaned_data["observacion"],
-                        estado_nuevo=formulario_seguimiento.cleaned_data["estado_nuevo"],
-                        resultado_cierre=formulario_seguimiento.cleaned_data["resultado_cierre"],
-                    )
+                    with transaction.atomic():
+                        seguimiento = registrar_seguimiento(
+                            incidente=incidente,
+                            usuario=request.user,
+                            observacion=formulario_seguimiento.cleaned_data["observacion"],
+                            estado_nuevo=formulario_seguimiento.cleaned_data["estado_nuevo"],
+                            resultado_cierre=formulario_seguimiento.cleaned_data["resultado_cierre"],
+                        )
+                        registrar_auditoria(usuario=request.user, accion="AGREGAR_SEGUIMIENTO", modulo="INCIDENTES", entidad="SeguimientoIncidente", entidad_id=seguimiento.pk, descripcion=f"Seguimiento agregado al incidente {incidente.pk}.", request=request)
+                        if seguimiento.estado_nuevo != seguimiento.estado_anterior:
+                            registrar_auditoria(usuario=request.user, accion="CAMBIAR_ESTADO", modulo="INCIDENTES", entidad="Incidente", entidad_id=incidente.pk, descripcion=f"Estado del incidente {incidente.pk}: {seguimiento.estado_anterior} → {seguimiento.estado_nuevo}.", request=request)
                 except ValidationError as error:
                     formulario_seguimiento.add_error(None, error)
                 else:
@@ -163,7 +170,9 @@ def detalle_incidente(request, pk):
                 evidencia = formulario_evidencia.save(commit=False)
                 evidencia.incidente = incidente
                 evidencia.usuario = request.user
-                evidencia.save()
+                with transaction.atomic():
+                    evidencia.save()
+                    registrar_auditoria(usuario=request.user, accion="CARGAR_EVIDENCIA", modulo="INCIDENTES", entidad="EvidenciaIncidente", entidad_id=evidencia.pk, descripcion=f"Evidencia tipo {evidencia.tipo} agregada al incidente {incidente.pk}.", request=request)
                 messages.success(request, "Evidencia registrada correctamente.")
                 return redirect("incidents:detail", pk=pk)
         elif accion == "institucion":
@@ -176,6 +185,7 @@ def detalle_incidente(request, pk):
                 try:
                     with transaction.atomic():
                         participacion.save()
+                        registrar_auditoria(usuario=request.user, accion="ASIGNAR_INSTITUCION", modulo="INCIDENTES", entidad="ParticipacionInstitucion", entidad_id=participacion.pk, descripcion=f"Institución {participacion.institucion.nombre} asociada al incidente {incidente.pk}.", request=request)
                 except IntegrityError:
                     formulario_participacion.add_error(
                         "institucion", "Esta institución ya está asociada al incidente."

@@ -19,8 +19,11 @@ from reports.services import (
     obtener_resumen_incidentes,
 )
 
-from .forms import CrearUsuarioForm, EditarUsuarioForm, FiltroUsuariosForm
-from .models import PerfilUsuario
+from .audit import registrar_auditoria
+from .forms import (
+    CrearUsuarioForm, EditarUsuarioForm, FiltroAuditoriaForm, FiltroUsuariosForm,
+)
+from .models import AuditoriaAccion, PerfilUsuario
 from .navigation import obtener_navegacion
 from .permissions import roles_permitidos
 
@@ -145,6 +148,44 @@ def listar_usuarios(request):
     )
 
 
+@roles_permitidos(PerfilUsuario.Rol.ADMINISTRADOR, PerfilUsuario.Rol.AUDITOR)
+def listar_auditoria(request):
+    filtros = FiltroAuditoriaForm(request.GET)
+    registros = AuditoriaAccion.objects.select_related("usuario")
+    if filtros.is_valid():
+        datos = filtros.cleaned_data
+        if datos["fecha_desde"]:
+            registros = registros.filter(fecha_hora__date__gte=datos["fecha_desde"])
+        if datos["fecha_hasta"]:
+            registros = registros.filter(fecha_hora__date__lte=datos["fecha_hasta"])
+        if datos["usuario"]:
+            registros = registros.filter(usuario=datos["usuario"])
+        if datos["modulo"]:
+            registros = registros.filter(modulo=datos["modulo"])
+        if datos["accion"]:
+            registros = registros.filter(accion=datos["accion"])
+        busqueda = datos["busqueda"].strip()
+        if busqueda:
+            registros = registros.filter(
+                Q(descripcion__icontains=busqueda)
+                | Q(entidad__icontains=busqueda)
+                | Q(entidad_id__icontains=busqueda)
+                | Q(usuario__username__icontains=busqueda)
+            )
+    else:
+        registros = registros.none()
+    pagina = Paginator(registros.order_by("-fecha_hora", "-pk"), 30).get_page(
+        request.GET.get("page")
+    )
+    parametros = request.GET.copy()
+    parametros.pop("page", None)
+    query = parametros.urlencode()
+    return render(request, "accounts/audit_list.html", {
+        **obtener_navegacion(request.user), "filtros": filtros,
+        "pagina": pagina, "query_paginacion": f"{query}&" if query else "",
+    })
+
+
 @roles_permitidos(PerfilUsuario.Rol.ADMINISTRADOR)
 def crear_usuario(request):
     formulario = CrearUsuarioForm(
@@ -165,6 +206,11 @@ def crear_usuario(request):
             perfil.rol = datos["rol"]
             perfil.telefono = datos["telefono"]
             perfil.save(update_fields=("rol", "telefono"))
+            registrar_auditoria(
+                usuario=request.user, accion="CREAR", modulo="USUARIOS",
+                entidad="Usuario", entidad_id=usuario.pk,
+                descripcion=f"Se creó el usuario {usuario.username}.", request=request,
+            )
         messages.success(request, "Usuario creado correctamente.")
         return redirect("accounts:user_list")
 
@@ -201,6 +247,7 @@ def editar_usuario(request, pk):
     if request.method == "POST" and formulario.is_valid():
         datos = formulario.cleaned_data
         with transaction.atomic():
+            estado_anterior = usuario.is_active
             usuario.first_name = datos["first_name"]
             usuario.last_name = datos["last_name"]
             usuario.username = datos["username"]
@@ -214,6 +261,20 @@ def editar_usuario(request, pk):
             perfil.telefono = datos["telefono"]
             perfil.rol = datos["rol"]
             perfil.save(update_fields=("telefono", "rol"))
+            registrar_auditoria(
+                usuario=request.user, accion="EDITAR", modulo="USUARIOS",
+                entidad="Usuario", entidad_id=usuario.pk,
+                descripcion=f"Se editó el usuario {usuario.username}.", request=request,
+            )
+            if estado_anterior != usuario.is_active:
+                accion = "ACTIVAR" if usuario.is_active else "DESACTIVAR"
+                verbo = "activó" if usuario.is_active else "desactivó"
+                registrar_auditoria(
+                    usuario=request.user, accion=accion, modulo="USUARIOS",
+                    entidad="Usuario", entidad_id=usuario.pk,
+                    descripcion=f"Se {verbo} el usuario {usuario.username}.",
+                    request=request,
+                )
         messages.success(request, "Usuario actualizado correctamente.")
         return redirect("accounts:user_list")
 
@@ -237,8 +298,16 @@ def activar_desactivar_usuario(request, pk):
         messages.warning(request, "No puede desactivar su propia cuenta.")
         return redirect("accounts:user_list")
 
-    usuario.is_active = not usuario.is_active
-    usuario.save(update_fields=("is_active",))
+    with transaction.atomic():
+        usuario.is_active = not usuario.is_active
+        usuario.save(update_fields=("is_active",))
+        accion = "ACTIVAR" if usuario.is_active else "DESACTIVAR"
+        verbo = "activó" if usuario.is_active else "desactivó"
+        registrar_auditoria(
+            usuario=request.user, accion=accion, modulo="USUARIOS",
+            entidad="Usuario", entidad_id=usuario.pk,
+            descripcion=f"Se {verbo} el usuario {usuario.username}.", request=request,
+        )
     mensaje = (
         "Usuario activado correctamente."
         if usuario.is_active else "Usuario desactivado correctamente."

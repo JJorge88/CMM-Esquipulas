@@ -4,7 +4,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.core.exceptions import ValidationError
 
-from .models import PerfilUsuario
+from .models import AuditoriaAccion, PerfilUsuario
 
 
 class DatosUsuarioForm(forms.Form):
@@ -123,3 +123,53 @@ class FiltroUsuariosForm(forms.Form):
         choices=(("", "Todos"), ("activo", "Activo"), ("inactivo", "Inactivo")),
         widget=forms.Select(attrs={"class": "form-select"}),
     )
+
+
+class FiltroAuditoriaForm(forms.Form):
+    fecha_desde = forms.DateField(
+        required=False, label="Fecha desde",
+        widget=forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+    )
+    fecha_hasta = forms.DateField(
+        required=False, label="Fecha hasta",
+        widget=forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+    )
+    usuario = forms.ModelChoiceField(
+        required=False, queryset=User.objects.none(),
+        label="Usuario", empty_label="Todos los usuarios",
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+    modulo = forms.ChoiceField(
+        required=False, choices=(), label="Módulo",
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+    accion = forms.ChoiceField(
+        required=False, choices=(), label="Acción",
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+    busqueda = forms.CharField(
+        required=False, label="Buscar",
+        widget=forms.TextInput(attrs={
+            "class": "form-control", "placeholder": "Descripción, entidad o usuario",
+        }),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["usuario"].queryset = User.objects.filter(
+            auditorias_acciones__isnull=False
+        ).distinct().order_by("username")
+        for campo, etiqueta in (("modulo", "Todos los módulos"), ("accion", "Todas las acciones")):
+            valores = AuditoriaAccion.objects.order_by(campo).values_list(
+                campo, flat=True
+            ).distinct()
+            self.fields[campo].choices = [("", etiqueta), *((valor, valor) for valor in valores)]
+
+    def clean(self):
+        datos = super().clean()
+        desde, hasta = datos.get("fecha_desde"), datos.get("fecha_hasta")
+        if desde and hasta and desde > hasta:
+            self.add_error(
+                "fecha_hasta", "La fecha final debe ser igual o posterior a la inicial."
+            )
+        return datos

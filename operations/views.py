@@ -6,6 +6,7 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
+from accounts.audit import registrar_auditoria
 from accounts.models import PerfilUsuario
 from accounts.navigation import obtener_navegacion
 from accounts.permissions import roles_permitidos
@@ -69,7 +70,9 @@ def listar_turnos(request):
 def crear_turno(request):
     formulario = TurnoForm(request.POST or None)
     if request.method == "POST" and formulario.is_valid():
-        formulario.save()
+        with transaction.atomic():
+            turno = formulario.save()
+            registrar_auditoria(usuario=request.user, accion="CREAR", modulo="TURNOS", entidad="Turno", entidad_id=turno.pk, descripcion=f"Turno {turno.pk} creado.", request=request)
         messages.success(request, "Turno creado correctamente.")
         return redirect("operations:turn_list")
     return render(request, "operations/turn_form.html", {
@@ -82,7 +85,9 @@ def editar_turno(request, pk):
     turno = get_object_or_404(Turno, pk=pk)
     formulario = TurnoForm(request.POST or None, instance=turno)
     if request.method == "POST" and formulario.is_valid():
-        formulario.save()
+        with transaction.atomic():
+            turno = formulario.save()
+            registrar_auditoria(usuario=request.user, accion="EDITAR", modulo="TURNOS", entidad="Turno", entidad_id=turno.pk, descripcion=f"Turno {turno.pk} actualizado.", request=request)
         messages.success(request, "Turno actualizado correctamente.")
         return redirect("operations:turn_list")
     return render(request, "operations/turn_form.html", {
@@ -121,10 +126,12 @@ def listar_asignaciones(request):
     })
 
 
-def _guardar_asignacion(request, formulario, mensaje):
+def _guardar_asignacion(request, formulario, mensaje, accion):
     if request.method == "POST" and formulario.is_valid():
         try:
-            formulario.save()
+            with transaction.atomic():
+                asignacion = formulario.save()
+                registrar_auditoria(usuario=request.user, accion=accion, modulo="ASIGNACIONES", entidad="AsignacionTurno", entidad_id=asignacion.pk, descripcion=f"Asignación {asignacion.pk} guardada.", request=request)
         except ValidationError as error:
             for campo, errores in error.message_dict.items():
                 for texto in errores:
@@ -138,7 +145,7 @@ def _guardar_asignacion(request, formulario, mensaje):
 @roles_permitidos(*GESTORES)
 def crear_asignacion(request):
     formulario = AsignacionForm(request.POST or None)
-    respuesta = _guardar_asignacion(request, formulario, "Asignación creada correctamente.")
+    respuesta = _guardar_asignacion(request, formulario, "Asignación creada correctamente.", "CREAR")
     if respuesta:
         return respuesta
     return render(request, "operations/assignment_form.html", {
@@ -150,7 +157,7 @@ def crear_asignacion(request):
 def editar_asignacion(request, pk):
     asignacion = get_object_or_404(AsignacionTurno, pk=pk)
     formulario = AsignacionForm(request.POST or None, instance=asignacion)
-    respuesta = _guardar_asignacion(request, formulario, "Asignación actualizada correctamente.")
+    respuesta = _guardar_asignacion(request, formulario, "Asignación actualizada correctamente.", "EDITAR")
     if respuesta:
         return respuesta
     return render(request, "operations/assignment_form.html", {
@@ -194,7 +201,9 @@ def crear_institucion(request):
     ).exists()
     formulario = InstitucionForm(request.POST or None, permitir_estado=es_admin)
     if request.method == "POST" and formulario.is_valid():
-        formulario.save()
+        with transaction.atomic():
+            institucion = formulario.save()
+            registrar_auditoria(usuario=request.user, accion="CREAR", modulo="INSTITUCIONES", entidad="InstitucionApoyo", entidad_id=institucion.pk, descripcion=f"Institución {institucion.pk} creada.", request=request)
         messages.success(request, "Institución creada correctamente.")
         return redirect("operations:institution_list")
     return render(request, "operations/institution_form.html", {
@@ -213,7 +222,9 @@ def editar_institucion(request, pk):
         request.POST or None, instance=institucion, permitir_estado=es_admin
     )
     if request.method == "POST" and formulario.is_valid():
-        formulario.save()
+        with transaction.atomic():
+            institucion = formulario.save()
+            registrar_auditoria(usuario=request.user, accion="EDITAR", modulo="INSTITUCIONES", entidad="InstitucionApoyo", entidad_id=institucion.pk, descripcion=f"Institución {institucion.pk} actualizada.", request=request)
         messages.success(request, "Institución actualizada correctamente.")
         return redirect("operations:institution_list")
     return render(request, "operations/institution_form.html", {
@@ -226,8 +237,10 @@ def editar_institucion(request, pk):
 @require_POST
 def cambiar_estado_institucion(request, pk):
     institucion = get_object_or_404(InstitucionApoyo, pk=pk)
-    institucion.activa = not institucion.activa
-    institucion.save(update_fields=("activa", "fecha_actualizacion"))
+    with transaction.atomic():
+        institucion.activa = not institucion.activa
+        institucion.save(update_fields=("activa", "fecha_actualizacion"))
+        registrar_auditoria(usuario=request.user, accion="ACTIVAR" if institucion.activa else "DESACTIVAR", modulo="INSTITUCIONES", entidad="InstitucionApoyo", entidad_id=institucion.pk, descripcion=f"Estado de institución {institucion.pk} actualizado.", request=request)
     if institucion.activa:
         messages.success(request, "Institución activada correctamente.")
     else:
@@ -268,11 +281,12 @@ def listar_recursos(request):
     })
 
 
-def _guardar_recurso(request, formulario, mensaje):
+def _guardar_recurso(request, formulario, mensaje, accion):
     if request.method == "POST" and formulario.is_valid():
         try:
             with transaction.atomic():
-                formulario.save()
+                recurso = formulario.save()
+                registrar_auditoria(usuario=request.user, accion=accion, modulo="RECURSOS", entidad="RecursoInstitucional", entidad_id=recurso.pk, descripcion=f"Recurso {recurso.pk} guardado.", request=request)
         except IntegrityError as error:
             restriccion = getattr(getattr(error.__cause__, "diag", None), "constraint_name", "")
             campo = {
@@ -292,7 +306,7 @@ def _guardar_recurso(request, formulario, mensaje):
 @roles_permitidos(*GESTORES)
 def crear_recurso(request):
     formulario = RecursoForm(request.POST or None, permitir_estado=_es_admin(request))
-    respuesta = _guardar_recurso(request, formulario, "Recurso creado correctamente.")
+    respuesta = _guardar_recurso(request, formulario, "Recurso creado correctamente.", "CREAR")
     if respuesta:
         return respuesta
     return render(request, "operations/resource_form.html", {
@@ -307,7 +321,7 @@ def editar_recurso(request, pk):
     formulario = RecursoForm(
         request.POST or None, instance=recurso, permitir_estado=_es_admin(request)
     )
-    respuesta = _guardar_recurso(request, formulario, "Recurso actualizado correctamente.")
+    respuesta = _guardar_recurso(request, formulario, "Recurso actualizado correctamente.", "EDITAR")
     if respuesta:
         return respuesta
     return render(request, "operations/resource_form.html", {
@@ -320,8 +334,10 @@ def editar_recurso(request, pk):
 @require_POST
 def cambiar_estado_recurso(request, pk):
     recurso = get_object_or_404(RecursoInstitucional, pk=pk)
-    recurso.activo = not recurso.activo
-    recurso.save(update_fields=("activo", "fecha_actualizacion"))
+    with transaction.atomic():
+        recurso.activo = not recurso.activo
+        recurso.save(update_fields=("activo", "fecha_actualizacion"))
+        registrar_auditoria(usuario=request.user, accion="ACTIVAR" if recurso.activo else "DESACTIVAR", modulo="RECURSOS", entidad="RecursoInstitucional", entidad_id=recurso.pk, descripcion=f"Estado de recurso {recurso.pk} actualizado.", request=request)
     if recurso.activo:
         messages.success(request, "Recurso activado correctamente.")
     else:
@@ -351,7 +367,9 @@ def listar_tipos_recurso(request):
 def crear_tipo_recurso(request):
     formulario = TipoRecursoForm(request.POST or None)
     if request.method == "POST" and formulario.is_valid():
-        formulario.save()
+        with transaction.atomic():
+            tipo = formulario.save()
+            registrar_auditoria(usuario=request.user, accion="CREAR", modulo="RECURSOS", entidad="TipoRecurso", entidad_id=tipo.pk, descripcion=f"Tipo de recurso {tipo.pk} creado.", request=request)
         messages.success(request, "Tipo de recurso creado correctamente.")
         return redirect("operations:resource_type_list")
     return render(request, "operations/resource_type_form.html", {
@@ -365,7 +383,9 @@ def editar_tipo_recurso(request, pk):
     tipo = get_object_or_404(TipoRecurso, pk=pk)
     formulario = TipoRecursoForm(request.POST or None, instance=tipo)
     if request.method == "POST" and formulario.is_valid():
-        formulario.save()
+        with transaction.atomic():
+            tipo = formulario.save()
+            registrar_auditoria(usuario=request.user, accion="EDITAR", modulo="RECURSOS", entidad="TipoRecurso", entidad_id=tipo.pk, descripcion=f"Tipo de recurso {tipo.pk} actualizado.", request=request)
         messages.success(request, "Tipo de recurso actualizado correctamente.")
         return redirect("operations:resource_type_list")
     return render(request, "operations/resource_type_form.html", {

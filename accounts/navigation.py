@@ -3,14 +3,14 @@ from .models import PerfilUsuario
 
 SECCIONES_POR_ROL = {
     PerfilUsuario.Rol.ADMINISTRADOR: (
-        "Incidentes", "Operación", "Reportes", "Usuarios"
+        "Incidentes", "Operación", "Reportes", "Usuarios", "Auditoría"
     ),
     PerfilUsuario.Rol.COORDINADOR: (
         "Incidentes", "Operación", "Reportes"
     ),
     PerfilUsuario.Rol.OPERADOR: ("Incidentes",),
     PerfilUsuario.Rol.CONSULTA: ("Incidentes", "Reportes"),
-    PerfilUsuario.Rol.AUDITOR: ("Incidentes", "Operación", "Reportes"),
+    PerfilUsuario.Rol.AUDITOR: ("Incidentes", "Operación", "Reportes", "Auditoría"),
 }
 
 ROLES_REGISTRO_INCIDENTES = (
@@ -32,6 +32,7 @@ def obtener_navegacion(usuario):
                 else "accounts:user_list" if titulo == "Usuarios"
                 else "operations:turn_list" if titulo == "Operación"
                 else "reports:index" if titulo == "Reportes"
+                else "accounts:audit_list" if titulo == "Auditoría"
                 else "#"
             ),
             "subopciones": (

@@ -147,7 +147,7 @@ class AutenticacionWebTests(TestCase):
 
         self.assertEqual(
             titulos,
-            ["Inicio", "Incidentes", "Operación", "Reportes", "Usuarios"],
+            ["Inicio", "Incidentes", "Operación", "Reportes", "Usuarios", "Auditoría"],
         )
         for titulo in titulos:
             self.assertContains(respuesta, titulo)
