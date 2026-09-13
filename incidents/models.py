@@ -28,6 +28,14 @@ class Incidente(models.Model):
 
     fecha_hora_reporte = models.DateTimeField()
     ubicacion = models.CharField(max_length=255)
+    camara_origen = models.ForeignKey(
+        "operations.RecursoInstitucional",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="incidentes_detectados",
+        verbose_name="Cámara de origen",
+    )
     tipo_incidente = models.CharField(max_length=100)
     prioridad = models.CharField(max_length=50)
     descripcion = models.TextField()
@@ -55,6 +63,7 @@ class Incidente(models.Model):
 
     def clean(self):
         super().clean()
+        self._validar_camara_origen()
         if self.estado == self.Estado.CERRADO and not self.resultado_cierre.strip():
             estado_anterior = None
             if self.pk:
@@ -65,6 +74,33 @@ class Incidente(models.Model):
                 raise ValidationError({
                     "resultado_cierre": "Debe registrar el resultado para cerrar el incidente."
                 })
+
+    def _validar_camara_origen(self):
+        if not self.camara_origen_id:
+            return
+        if self.pk and type(self).objects.filter(
+            pk=self.pk, camara_origen_id=self.camara_origen_id
+        ).exists():
+            return
+
+        from operations.models import RecursoInstitucional
+
+        camara = self.camara_origen
+        if not (camara.activo and camara.tipo.activo and camara.tipo.es_camara):
+            raise ValidationError({
+                "camara_origen": "Seleccione una cámara de videovigilancia activa."
+            })
+        if camara.estado not in (
+            RecursoInstitucional.Estado.DISPONIBLE,
+            RecursoInstitucional.Estado.EN_USO,
+        ):
+            raise ValidationError({
+                "camara_origen": "La cámara debe estar disponible o en uso."
+            })
+
+    def save(self, *args, **kwargs):
+        self._validar_camara_origen()
+        return super().save(*args, **kwargs)
 
     def __str__(self):
         fecha = self.fecha_hora_reporte.strftime("%d/%m/%Y %H:%M")

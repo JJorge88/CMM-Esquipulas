@@ -15,6 +15,7 @@ document.addEventListener("DOMContentLoaded", () => {
         prioridad: { tipo: "bar", horizontal: false },
         operador: { tipo: "bar", horizontal: true },
         institucion: { tipo: "bar", horizontal: true },
+        camara: { tipo: "bar", horizontal: true },
     };
 
     document.querySelectorAll("[data-report-chart]").forEach((lienzo) => {

@@ -86,10 +86,37 @@ class IncidentesWebTests(TestCase):
         self.client.force_login(self.usuario)
         respuesta = self.client.get(reverse("incidents:create"))
         self.assertEqual(respuesta.status_code, 200)
-        self.assertContains(respuesta, "Información general")
-        self.assertContains(respuesta, "Asignación")
+        self.assertContains(respuesta, "Registro rápido")
+        self.assertContains(respuesta, "Ubicación / referencia")
+        self.assertContains(respuesta, "Operador responsable")
+        self.assertContains(respuesta, "Guardar incidente")
+        self.assertEqual(
+            respuesta.content.decode().count('class="card dashboard-card incident-quick-card"'),
+            1,
+        )
         self.assertNotContains(respuesta, 'name="operador_responsable"')
         self.assertNotContains(respuesta, 'name="estado"')
+
+    def test_fecha_actual_se_sugiere_y_es_editable(self):
+        self.client.force_login(self.usuario)
+        antes = timezone.localtime().replace(second=0, microsecond=0)
+        respuesta = self.client.get(reverse("incidents:create"))
+        despues = timezone.localtime().replace(second=0, microsecond=0)
+        sugerida = respuesta.context["formulario"].initial["fecha_hora_reporte"]
+        self.assertLessEqual(antes, sugerida)
+        self.assertLessEqual(sugerida, despues)
+        self.assertContains(respuesta, sugerida.strftime("%Y-%m-%dT%H:%M"))
+        self.assertContains(respuesta, "Hora actual sugerida; puede cambiarla.")
+
+    def test_sugerencias_proceden_de_incidentes_existentes_y_admiten_texto(self):
+        self.client.force_login(self.usuario)
+        respuesta = self.client.get(reverse("incidents:create"))
+        self.assertContains(respuesta, 'list="tipos-incidente-sugeridos"')
+        self.assertContains(respuesta, 'list="prioridades-sugeridas"')
+        self.assertContains(respuesta, '<option value="Accidente"></option>', html=True)
+        self.assertContains(respuesta, '<option value="Incendio"></option>', html=True)
+        self.assertContains(respuesta, '<option value="Urgente"></option>', html=True)
+        self.assertNotContains(respuesta, 'name="tipo_incidente" type="select"')
 
     def test_administrador_registra(self):
         self.cambiar_rol(PerfilUsuario.Rol.ADMINISTRADOR)
@@ -97,8 +124,42 @@ class IncidentesWebTests(TestCase):
         respuesta = self.client.post(
             reverse("incidents:create"), self.datos_registro(), follow=True
         )
-        self.assertRedirects(respuesta, reverse("incidents:list"))
+        incidente = Incidente.objects.get(ubicacion="Zona municipal")
+        self.assertRedirects(respuesta, reverse("incidents:detail", args=[incidente.pk]))
         self.assertContains(respuesta, "Incidente registrado correctamente.")
+
+    def test_fecha_editada_se_respeta_y_abre_detalle(self):
+        self.client.force_login(self.usuario)
+        respuesta = self.client.post(
+            reverse("incidents:create"),
+            self.datos_registro(fecha_hora_reporte="2026-05-14T08:15"),
+        )
+        incidente = Incidente.objects.get(ubicacion="Zona municipal")
+        self.assertRedirects(respuesta, reverse("incidents:detail", args=[incidente.pk]))
+        self.assertEqual(
+            timezone.localtime(incidente.fecha_hora_reporte).strftime("%Y-%m-%dT%H:%M"),
+            "2026-05-14T08:15",
+        )
+
+    def test_error_muestra_resumen_y_conserva_datos_ingresados(self):
+        self.client.force_login(self.usuario)
+        respuesta = self.client.post(
+            reverse("incidents:create"), self.datos_registro(ubicacion="")
+        )
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertContains(respuesta, "Revise los campos señalados")
+        self.assertContains(respuesta, 'href="#id_ubicacion"')
+        self.assertContains(respuesta, "Aviso ciudadano")
+        self.assertContains(respuesta, "2026-05-15T14:30")
+        self.assertContains(respuesta, 'aria-invalid="true"')
+        self.assertFalse(Incidente.objects.filter(tipo_incidente="Aviso ciudadano").exists())
+
+    def test_post_vacio_muestra_errores_sin_crear_incidente(self):
+        self.client.force_login(self.usuario)
+        respuesta = self.client.post(reverse("incidents:create"), {})
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertContains(respuesta, "Revise los campos señalados")
+        self.assertEqual(Incidente.objects.count(), 2)
 
     def test_coordinador_registra(self):
         self.cambiar_rol(PerfilUsuario.Rol.COORDINADOR)

@@ -4,6 +4,9 @@
     --cmm-fondo: #f4f7fa;
 }
 
+.active-incident-card { border-left: 4px solid var(--cmm-azul-claro); }
+.active-incident-card .card-body { min-width: 0; }
+
 body {
     min-height: 100vh;
     background: var(--cmm-fondo);
@@ -566,6 +569,56 @@ textarea.form-control { min-height: 120px; }
 
 .form-layout { max-width: 1050px; }
 .form-layout .dashboard-card { margin-bottom: 1rem !important; }
+.incident-quick-page { max-width: 920px; }
+.incident-quick-heading { margin-bottom: 1.15rem; }
+.incident-quick-back {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    margin-bottom: .65rem;
+    color: #2469c7;
+    font-size: .84rem;
+    font-weight: 650;
+    text-decoration: none;
+}
+.incident-quick-back:hover { text-decoration: underline; }
+.incident-quick-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+.incident-quick-card-header .badge { white-space: nowrap; }
+.incident-quick-card .card-body { padding: 1.2rem 1.25rem; }
+.incident-quick-card .form-label { color: #253246; font-size: .86rem; }
+.incident-quick-card textarea.form-control { min-height: 88px; resize: vertical; }
+.incident-quick-meta {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(180px, .7fr);
+    align-items: center;
+    gap: 1.5rem;
+    padding: .9rem 1.25rem;
+    border-top: 1px solid #e8edf4;
+    background: #f8fafd;
+}
+.incident-quick-meta .form-control { max-width: 360px; }
+.incident-quick-operator { display: flex; flex-direction: column; gap: .15rem; }
+.incident-quick-operator strong { color: #253246; font-size: .9rem; }
+.incident-quick-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: .9rem 1.25rem;
+    border-top: 1px solid #e8edf4;
+}
+@media (max-width: 767px) {
+    .incident-quick-card-header { align-items: flex-start; flex-direction: column; }
+    .incident-quick-meta { grid-template-columns: 1fr; gap: .8rem; }
+    .incident-quick-actions { align-items: stretch; flex-direction: column; }
+    .incident-quick-actions .d-flex { width: 100%; }
+    .incident-quick-actions .btn { flex: 1; }
+}
 .incident-info-card { border-left: 4px solid #2469d5; }
 .incident-facts dt {
     margin-bottom: .25rem;

@@ -1,7 +1,8 @@
 from django import forms
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 
-from operations.models import InstitucionApoyo
+from operations.models import InstitucionApoyo, RecursoInstitucional
 
 from .models import EvidenciaIncidente, Incidente, ParticipacionInstitucion
 from .services import TRANSICIONES_PERMITIDAS
@@ -13,29 +14,75 @@ class IncidenteForm(forms.ModelForm):
         fields = (
             "fecha_hora_reporte",
             "ubicacion",
+            "camara_origen",
             "tipo_incidente",
             "prioridad",
             "descripcion",
         )
         labels = {
             "fecha_hora_reporte": "Fecha y hora del reporte",
-            "ubicacion": "Ubicación",
+            "ubicacion": "Ubicación / referencia",
+            "camara_origen": "Cámara de origen (opcional)",
             "tipo_incidente": "Tipo de incidente",
             "prioridad": "Prioridad",
             "descripcion": "Descripción del incidente",
         }
         widgets = {
             "fecha_hora_reporte": forms.DateTimeInput(
-                attrs={"type": "datetime-local", "class": "form-control"},
+                attrs={
+                    "type": "datetime-local",
+                    "class": "form-control",
+                    "aria-describedby": "fecha-reporte-ayuda",
+                },
                 format="%Y-%m-%dT%H:%M",
             ),
-            "ubicacion": forms.TextInput(attrs={"class": "form-control"}),
-            "tipo_incidente": forms.TextInput(attrs={"class": "form-control"}),
-            "prioridad": forms.TextInput(attrs={"class": "form-control"}),
+            "ubicacion": forms.TextInput(attrs={
+                "class": "form-control",
+                "placeholder": "Dirección o referencia cercana",
+                "autofocus": True,
+            }),
+            "camara_origen": forms.Select(attrs={"class": "form-select"}),
+            "tipo_incidente": forms.TextInput(attrs={
+                "class": "form-control",
+                "placeholder": "Escriba el tipo de incidente",
+                "list": "tipos-incidente-sugeridos",
+            }),
+            "prioridad": forms.TextInput(attrs={
+                "class": "form-control",
+                "placeholder": "Según la evaluación inicial",
+                "list": "prioridades-sugeridas",
+            }),
             "descripcion": forms.Textarea(
-                attrs={"class": "form-control", "rows": 5}
+                attrs={
+                    "class": "form-control",
+                    "rows": 3,
+                    "placeholder": "¿Qué ocurrió? Anote solo lo necesario para iniciar la atención.",
+                }
             ),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["camara_origen"].queryset = (
+            RecursoInstitucional.objects.filter(
+                activo=True,
+                tipo__activo=True,
+                tipo__es_camara=True,
+                estado__in=(
+                    RecursoInstitucional.Estado.DISPONIBLE,
+                    RecursoInstitucional.Estado.EN_USO,
+                ),
+            )
+            .select_related("tipo")
+            .order_by("nombre", "pk")
+        )
+        self.fields["camara_origen"].empty_label = "Sin cámara asociada"
+        if self.is_bound:
+            for nombre in self.errors:
+                if nombre in self.fields:
+                    widget = self.fields[nombre].widget
+                    widget.attrs["class"] += " is-invalid"
+                    widget.attrs["aria-invalid"] = "true"
 
 
 class FiltroIncidentesForm(forms.Form):
@@ -60,6 +107,13 @@ class FiltroIncidentesForm(forms.Form):
     prioridad = forms.ChoiceField(
         required=False,
         label="Prioridad",
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+    camara = forms.ModelChoiceField(
+        required=False,
+        queryset=RecursoInstitucional.objects.none(),
+        label="Cámara",
+        empty_label="Todas las cámaras",
         widget=forms.Select(attrs={"class": "form-select"}),
     )
     fecha_desde = forms.DateField(
@@ -88,6 +142,9 @@ class FiltroIncidentesForm(forms.Form):
             ("", "Todas las prioridades"),
             *((valor, valor) for valor in prioridades),
         ]
+        self.fields["camara"].queryset = RecursoInstitucional.objects.filter(
+            Q(tipo__es_camara=True) | Q(incidentes_detectados__isnull=False)
+        ).select_related("tipo").distinct().order_by("nombre", "pk")
 
     def clean(self):
         datos = super().clean()

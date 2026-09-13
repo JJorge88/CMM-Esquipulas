@@ -2,8 +2,9 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db.models import Case, Count, IntegerField, Q, When
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from accounts.audit import registrar_auditoria
@@ -12,19 +13,79 @@ from accounts.navigation import obtener_navegacion
 from accounts.permissions import roles_permitidos
 
 from .forms import (
-    AsignacionForm, FiltroAsignacionesForm, FiltroInstitucionesForm,
-    FiltroRecursosForm, FiltroTiposRecursoForm, FiltroTurnosForm,
+    AsignacionForm, CamaraForm, FiltroAsignacionesForm, FiltroInstitucionesForm,
+    FiltroIncidentesActivosForm, FiltroRecursosForm, FiltroTiposRecursoForm,
+    FiltroTurnosForm,
     InstitucionForm, RecursoForm, TipoRecursoForm, TurnoForm,
 )
 from .models import (
     AsignacionTurno, InstitucionApoyo, RecursoInstitucional, TipoRecurso, Turno,
 )
+from .services import incidentes_activos, tiempo_transcurrido
+from incidents.models import Incidente
 
 
 GESTORES = (PerfilUsuario.Rol.ADMINISTRADOR, PerfilUsuario.Rol.COORDINADOR)
 LECTORES = (*GESTORES, PerfilUsuario.Rol.AUDITOR)
 LECTORES_ASIGNACIONES = (*LECTORES, PerfilUsuario.Rol.OPERADOR)
 LECTORES_INSTITUCIONES = (*LECTORES_ASIGNACIONES, PerfilUsuario.Rol.CONSULTA)
+
+
+@roles_permitidos(*LECTORES_INSTITUCIONES)
+def panel_incidentes_activos(request):
+    activos = incidentes_activos()
+    conteos = activos.aggregate(
+        total=Count("pk"),
+        registrados=Count("pk", filter=Q(estado=Incidente.Estado.REGISTRADO)),
+        pendientes=Count("pk", filter=Q(estado=Incidente.Estado.PENDIENTE)),
+        en_seguimiento=Count(
+            "pk", filter=Q(estado=Incidente.Estado.EN_SEGUIMIENTO)
+        ),
+    )
+    filtros = FiltroIncidentesActivosForm(request.GET or None)
+    if filtros.is_valid():
+        datos = filtros.cleaned_data
+        termino = datos["busqueda"].strip()
+        if termino:
+            consulta = Q(ubicacion__icontains=termino) | Q(descripcion__icontains=termino)
+            if termino.isdecimal():
+                consulta |= Q(pk=int(termino))
+            activos = activos.filter(consulta)
+        for campo, campo_modelo in (
+            ("estado", "estado"), ("tipo", "tipo_incidente"),
+            ("prioridad", "prioridad"),
+            ("operador", "operador_responsable"),
+            ("camara", "camara_origen"),
+        ):
+            if datos[campo]:
+                activos = activos.filter(**{campo_modelo: datos[campo]})
+        if datos["institucion"]:
+            activos = activos.filter(
+                participaciones_institucionales__institucion=datos["institucion"]
+            )
+
+    activos = activos.select_related(
+        "operador_responsable", "camara_origen", "camara_origen__tipo"
+    ).prefetch_related(
+        "participaciones_institucionales__institucion"
+    ).annotate(
+        orden_estado=Case(
+            When(estado=Incidente.Estado.REGISTRADO, then=0),
+            When(estado=Incidente.Estado.PENDIENTE, then=1),
+            default=2, output_field=IntegerField(),
+        )
+    ).order_by("orden_estado", "fecha_hora_reporte", "pk")
+    pagina, query_paginacion = _paginacion(request, activos)
+    ahora = timezone.now()
+    for incidente in pagina:
+        incidente.tiempo_transcurrido = tiempo_transcurrido(
+            incidente.fecha_hora_reporte, ahora
+        )
+    return render(request, "operations/active_incidents.html", {
+        **obtener_navegacion(request.user),
+        "conteos": conteos, "filtros": filtros, "pagina": pagina,
+        "query_paginacion": query_paginacion,
+    })
 
 
 def _paginacion(request, objetos):
@@ -273,11 +334,13 @@ def listar_recursos(request):
     pagina, query_paginacion = _paginacion(
         request, recursos.order_by("nombre", "pk")
     )
+    es_admin = _es_admin(request)
     return render(request, "operations/resource_list.html", {
         **obtener_navegacion(request.user), "filtros": filtros,
         "pagina": pagina, "query_paginacion": query_paginacion,
         "puede_gestionar": _puede_gestionar(request),
-        "puede_cambiar_estado": _es_admin(request),
+        "puede_cambiar_estado": es_admin,
+        "puede_agregar_camara": es_admin,
     })
 
 
@@ -312,6 +375,24 @@ def crear_recurso(request):
     return render(request, "operations/resource_form.html", {
         **obtener_navegacion(request.user), "formulario": formulario,
         "creacion": True,
+    })
+
+
+@roles_permitidos(PerfilUsuario.Rol.ADMINISTRADOR)
+def crear_camara(request):
+    formulario = CamaraForm(
+        request.POST if request.method == "POST" else None,
+        permitir_estado=True,
+    )
+    respuesta = _guardar_recurso(
+        request, formulario, "Cámara agregada correctamente.", "CREAR"
+    )
+    if respuesta:
+        return respuesta
+    return render(request, "operations/resource_form.html", {
+        **obtener_navegacion(request.user), "formulario": formulario,
+        "creacion": True, "es_camara": True,
+        "hay_tipos_camara": formulario.fields["tipo"].queryset.exists(),
     })
 
 

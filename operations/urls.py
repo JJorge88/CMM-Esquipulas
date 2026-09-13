@@ -6,8 +6,10 @@ from . import views
 app_name = "operations"
 
 urlpatterns = [
+    path("incidentes-activos/", views.panel_incidentes_activos, name="active_incidents"),
     path("recursos/", views.listar_recursos, name="resource_list"),
     path("recursos/nuevo/", views.crear_recurso, name="resource_create"),
+    path("recursos/camaras/nueva/", views.crear_camara, name="camera_create"),
     path("recursos/<int:pk>/editar/", views.editar_recurso, name="resource_update"),
     path("recursos/<int:pk>/estado/", views.cambiar_estado_recurso, name="resource_toggle_status"),
     path("tipos-recurso/", views.listar_tipos_recurso, name="resource_type_list"),

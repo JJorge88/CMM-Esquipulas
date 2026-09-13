@@ -1,11 +1,12 @@
 {% extends 'base.html' %}
 
-{% block title %}{% if creacion %}Nuevo recurso{% else %}Editar recurso{% endif %} | CMM Esquipulas{% endblock %}
+{% block title %}{% if es_camara %}Agregar cámara{% elif creacion %}Nuevo recurso{% else %}Editar recurso{% endif %} | CMM Esquipulas{% endblock %}
 {% block content %}
-<div class="page-heading mb-4"><a class="text-decoration-none" href="{% url 'operations:resource_list' %}"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i> Volver a recursos</a><h1 class="h2 mt-3 mb-1">{% if creacion %}Nuevo recurso{% else %}Editar recurso{% endif %}</h1><p class="text-secondary mb-0">Datos de identificación y estado operativo del recurso.</p></div>
+<div class="page-heading mb-4"><a class="text-decoration-none" href="{% url 'operations:resource_list' %}"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i> Volver a recursos</a><h1 class="h2 mt-3 mb-1">{% if es_camara %}Agregar cámara{% elif creacion %}Nuevo recurso{% else %}Editar recurso{% endif %}</h1><p class="text-secondary mb-0">{% if es_camara %}Registre la cámara como recurso institucional. Seleccione un tipo marcado como cámara de videovigilancia.{% else %}Datos de identificación y estado operativo del recurso.{% endif %}</p></div>
+{% if es_camara and not hay_tipos_camara %}<div class="alert alert-info" role="status">Primero cree un tipo de recurso activo y marque “Es cámara de videovigilancia”. <a href="{% url 'operations:resource_type_create' %}">Crear tipo de cámara</a>.</div>{% endif %}
 <section class="card dashboard-card" aria-label="Datos del recurso"><div class="card-body p-4"><form method="post" novalidate>{% csrf_token %}
     {% for error in formulario.non_field_errors %}<div class="alert alert-danger">{{ error }}</div>{% endfor %}
     <div class="row g-3">{% for campo in formulario %}<div class="{% if campo.name == 'descripcion' or campo.name == 'activo' %}col-12{% else %}col-12 col-md-6{% endif %}">{% if campo.name == 'activo' %}<div class="form-check mt-2">{{ campo }}<label class="form-check-label" for="{{ campo.id_for_label }}">Activo</label></div>{% else %}<label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>{{ campo }}{% endif %}{% for error in campo.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>{% endfor %}</div>
-    <div class="d-flex flex-wrap gap-2 mt-4"><button class="btn btn-primary" type="submit">Guardar recurso</button><a class="btn btn-outline-secondary" href="{% url 'operations:resource_list' %}">Cancelar</a></div>
+    <div class="d-flex flex-wrap gap-2 mt-4"><button class="btn btn-primary" type="submit" {% if es_camara and not hay_tipos_camara %}disabled{% endif %}>{% if es_camara %}Guardar cámara{% else %}Guardar recurso{% endif %}</button><a class="btn btn-outline-secondary" href="{% url 'operations:resource_list' %}">Cancelar</a></div>
 </form></div></section>
 {% endblock %}

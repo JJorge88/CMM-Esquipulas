@@ -32,7 +32,9 @@ from django.utils import timezone
 def listar_incidentes(request):
     navegacion = obtener_navegacion(request.user)
     filtros = FiltroIncidentesForm(request.GET or None)
-    incidentes = Incidente.objects.select_related("operador_responsable")
+    incidentes = Incidente.objects.select_related(
+        "operador_responsable", "camara_origen"
+    )
 
     if filtros.is_valid():
         datos = filtros.cleaned_data
@@ -49,6 +51,8 @@ def listar_incidentes(request):
             incidentes = incidentes.filter(tipo_incidente=datos["tipo"])
         if datos["prioridad"]:
             incidentes = incidentes.filter(prioridad=datos["prioridad"])
+        if datos["camara"]:
+            incidentes = incidentes.filter(camara_origen=datos["camara"])
         if datos["fecha_desde"]:
             incidentes = incidentes.filter(
                 fecha_hora_reporte__date__gte=datos["fecha_desde"]
@@ -84,28 +88,58 @@ def registrar_incidente(request):
     if not navegacion["puede_registrar_incidente"]:
         raise PermissionDenied("No tiene permiso para registrar incidentes.")
 
-    formulario = IncidenteForm(request.POST or None)
+    formulario = IncidenteForm(
+        request.POST if request.method == "POST" else None,
+        initial={
+            "fecha_hora_reporte": timezone.localtime().replace(
+                second=0, microsecond=0
+            )
+        },
+    )
     if request.method == "POST" and formulario.is_valid():
         incidente = formulario.save(commit=False)
         incidente.operador_responsable = request.user
         incidente.estado = Incidente.Estado.REGISTRADO
         with transaction.atomic():
             incidente.save()
-            registrar_auditoria(usuario=request.user, accion="CREAR", modulo="INCIDENTES", entidad="Incidente", entidad_id=incidente.pk, descripcion=f"Incidente {incidente.pk} registrado.", request=request)
-        messages.success(request, "Incidente registrado correctamente.")
-        return redirect("incidents:list")
+            descripcion_auditoria = f"Incidente {incidente.pk} registrado."
+            if incidente.camara_origen_id:
+                descripcion_auditoria += (
+                    f" Cámara de origen: {incidente.camara_origen.nombre}."
+                )
+            registrar_auditoria(
+                usuario=request.user, accion="CREAR", modulo="INCIDENTES",
+                entidad="Incidente", entidad_id=incidente.pk,
+                descripcion=descripcion_auditoria, request=request,
+            )
+        messages.success(
+            request,
+            "Incidente registrado correctamente. Puede continuar con su seguimiento en esta página.",
+        )
+        return redirect("incidents:detail", pk=incidente.pk)
 
     return render(
         request,
         "incidents/form.html",
-        {**navegacion, "formulario": formulario},
+        {
+            **navegacion,
+            "formulario": formulario,
+            "tipos_sugeridos": Incidente.objects.order_by("tipo_incidente")
+            .values_list("tipo_incidente", flat=True)
+            .distinct()[:20],
+            "prioridades_sugeridas": Incidente.objects.order_by("prioridad")
+            .values_list("prioridad", flat=True)
+            .distinct()[:20],
+        },
     )
 
 
 @login_required
 def detalle_incidente(request, pk):
     incidente = get_object_or_404(
-        Incidente.objects.select_related("operador_responsable").prefetch_related(
+        Incidente.objects.select_related(
+            "operador_responsable", "camara_origen"
+        ).prefetch_related(
             Prefetch(
                 "seguimientos",
                 queryset=SeguimientoIncidente.objects.select_related("usuario")

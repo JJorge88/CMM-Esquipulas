@@ -24,6 +24,7 @@
                     <div class="col-12 col-sm-6"><dt>ID</dt><dd>{{ incidente.id }}</dd></div>
                     <div class="col-12 col-sm-6"><dt>Fecha y hora del reporte</dt><dd>{{ incidente.fecha_hora_reporte|date:"d/m/Y H:i" }}</dd></div>
                     <div class="col-12 col-sm-6"><dt>Ubicación</dt><dd>{{ incidente.ubicacion }}</dd></div>
+                    <div class="col-12"><dt>Cámara de origen</dt><dd>{% if incidente.camara_origen %}{{ incidente.camara_origen.nombre }}{% if incidente.camara_origen.codigo_interno %} ({{ incidente.camara_origen.codigo_interno }}){% endif %}<br><span class="small text-secondary">Ubicación del recurso: {{ incidente.camara_origen.ubicacion|default:"No registrada" }} · Estado actual: {{ incidente.camara_origen.get_estado_display }}</span><br><span class="small text-secondary">El estado actual puede diferir del que tenía al registrarse el incidente.</span>{% else %}Sin cámara asociada{% endif %}</dd></div>
                     <div class="col-12 col-sm-6"><dt>Tipo</dt><dd>{{ incidente.tipo_incidente }}</dd></div>
                     <div class="col-12 col-sm-6"><dt>Prioridad</dt><dd>{{ incidente.prioridad }}</dd></div>
                     <div class="col-12 col-sm-6"><dt>Estado</dt><dd>{{ incidente.get_estado_display }}</dd></div>

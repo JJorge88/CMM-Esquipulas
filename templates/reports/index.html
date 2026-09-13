@@ -30,6 +30,7 @@
     <div class="col-12 col-xl-6"><div class="card dashboard-card h-100"><div class="card-header"><h2 class="h5 mb-0">Incidentes por prioridad</h2></div><div class="card-body"><div class="chart-wrap"><canvas id="grafica-prioridad" data-report-chart="prioridad" aria-label="Incidentes por prioridad" role="img"></canvas></div></div></div></div>
     <div class="col-12 col-xl-6"><div class="card dashboard-card h-100"><div class="card-header"><h2 class="h5 mb-0">Incidentes por operador</h2></div><div class="card-body"><div class="chart-wrap"><canvas id="grafica-operador" data-report-chart="operador" aria-label="Incidentes por operador" role="img"></canvas></div></div></div></div>
     <div class="col-12 col-xl-6"><div class="card dashboard-card h-100"><div class="card-header"><h2 class="h5 mb-0">Incidentes por institución</h2></div><div class="card-body"><div class="chart-wrap"><canvas id="grafica-institucion" data-report-chart="institucion" aria-label="Incidentes por institución" role="img"></canvas></div></div></div></div>
+    <div class="col-12"><div class="card dashboard-card h-100"><div class="card-header"><h2 class="h5 mb-0">Incidentes por cámara</h2></div><div class="card-body"><div class="chart-wrap"><canvas id="grafica-camara" data-report-chart="camara" aria-label="Incidentes por cámara" role="img"></canvas></div></div></div></div>
 </section>
 {{ graficas|json_script:'datos-reportes' }}
 {% endblock %}

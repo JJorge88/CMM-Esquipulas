@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block title %}Incidentes activos | CMM Esquipulas{% endblock %}
+
+{% block content %}
+<div class="page-heading d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+        <h1 class="h2 mb-1">Incidentes activos</h1>
+        <p class="text-secondary mb-0">Incidentes que todavía requieren atención del Centro de Monitoreo.</p>
+    </div>
+    <a class="btn btn-outline-primary" href="{{ request.get_full_path }}"><i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i> Actualizar</a>
+</div>
+
+<section class="row g-3 mb-4" aria-label="Resumen operativo">
+    <div class="col-6 col-xl-3"><div class="card dashboard-card h-100"><div class="card-body"><div class="text-secondary small">Total activos</div><div class="h2 mb-0">{{ conteos.total }}</div></div></div></div>
+    <div class="col-6 col-xl-3"><div class="card dashboard-card h-100"><div class="card-body"><div class="text-secondary small">Registrados</div><div class="h2 mb-0">{{ conteos.registrados }}</div></div></div></div>
+    <div class="col-6 col-xl-3"><div class="card dashboard-card h-100"><div class="card-body"><div class="text-secondary small">Pendientes</div><div class="h2 mb-0">{{ conteos.pendientes }}</div></div></div></div>
+    <div class="col-6 col-xl-3"><div class="card dashboard-card h-100"><div class="card-body"><div class="text-secondary small">En seguimiento</div><div class="h2 mb-0">{{ conteos.en_seguimiento }}</div></div></div></div>
+</section>
+
+<section class="card dashboard-card filter-panel mb-4" aria-labelledby="filtros-activos-titulo">
+    <div class="card-header"><h2 class="h5 mb-0" id="filtros-activos-titulo">Buscar y filtrar</h2></div>
+    <div class="card-body">
+        <form method="get" action="{% url 'operations:active_incidents' %}">
+            <div class="row g-3 align-items-end">
+                {% for campo in filtros %}<div class="col-12 col-sm-6 col-lg-3"><label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>{{ campo }}{% for error in campo.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>{% endfor %}
+                <div class="col-12 d-flex flex-wrap gap-2"><button class="btn btn-primary" type="submit">Aplicar filtros</button><a class="btn btn-outline-secondary" href="{% url 'operations:active_incidents' %}">Limpiar filtros</a></div>
+            </div>
+        </form>
+    </div>
+</section>
+
+<section aria-labelledby="lista-activos-titulo">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h2 class="h5 mb-0" id="lista-activos-titulo">Incidentes activos: {{ pagina.paginator.count }}</h2>
+        <span class="text-secondary small">Ordenados por estado y antigüedad del reporte</span>
+    </div>
+    {% if pagina.object_list %}
+        <div class="row g-3">
+            {% for incidente in pagina %}
+                <div class="col-12 col-xxl-6">
+                    <article class="card dashboard-card h-100 active-incident-card">
+                        <div class="card-body">
+                            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+                                <div><span class="text-secondary small">Incidente #{{ incidente.pk }}</span><h3 class="h5 mb-0">{{ incidente.tipo_incidente }}</h3></div>
+                                <span class="badge {% if incidente.estado == 'REGISTRADO' %}text-bg-primary{% elif incidente.estado == 'PENDIENTE' %}text-bg-warning{% else %}text-bg-info{% endif %}">{{ incidente.get_estado_display }}</span>
+                            </div>
+                            <div class="row g-2 small">
+                                <div class="col-6"><span class="text-secondary d-block">Prioridad</span><strong>{{ incidente.prioridad }}</strong></div>
+                                <div class="col-6"><span class="text-secondary d-block">Tiempo transcurrido</span><strong>{{ incidente.tiempo_transcurrido }}</strong></div>
+                                <div class="col-12 col-sm-6"><span class="text-secondary d-block">Fecha y hora del reporte</span>{{ incidente.fecha_hora_reporte|date:'d/m/Y H:i' }}</div>
+                                <div class="col-12 col-sm-6"><span class="text-secondary d-block">Operador responsable</span>{{ incidente.operador_responsable.get_full_name|default:incidente.operador_responsable.username }}</div>
+                                <div class="col-12"><span class="text-secondary d-block">Ubicación / referencia</span>{{ incidente.ubicacion }}</div>
+                                {% if incidente.camara_origen %}<div class="col-12"><span class="text-secondary d-block">Cámara de origen</span><i class="bi bi-camera-video me-1" aria-hidden="true"></i>{{ incidente.camara_origen.nombre }}{% if incidente.camara_origen.ubicacion %} · {{ incidente.camara_origen.ubicacion }}{% endif %}</div>{% endif %}
+                                <div class="col-12"><span class="text-secondary d-block mb-1">Instituciones participantes</span>{% for participacion in incidente.participaciones_institucionales.all %}<span class="badge text-bg-light border me-1 mb-1">{{ participacion.institucion.nombre }}</span>{% empty %}<span class="text-secondary">Sin instituciones asociadas</span>{% endfor %}</div>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-white border-top-0 pt-0"><a class="btn btn-outline-primary btn-sm" href="{% url 'incidents:detail' incidente.pk %}"><i class="bi bi-eye me-1" aria-hidden="true"></i> Ver incidente</a></div>
+                    </article>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}<div class="card dashboard-card"><div class="card-body text-center text-secondary py-5">No hay incidentes activos que coincidan con los filtros.</div></div>{% endif %}
+</section>
+
+{% if pagina.paginator.num_pages > 1 %}
+<nav class="mt-4" aria-label="Páginas de incidentes activos"><ul class="pagination justify-content-center flex-wrap">
+    <li class="page-item {% if not pagina.has_previous %}disabled{% endif %}">{% if pagina.has_previous %}<a class="page-link" href="?{{ query_paginacion }}page={{ pagina.previous_page_number }}">Anterior</a>{% else %}<span class="page-link">Anterior</span>{% endif %}</li>
+    <li class="page-item disabled"><span class="page-link">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span></li>
+    <li class="page-item {% if not pagina.has_next %}disabled{% endif %}">{% if pagina.has_next %}<a class="page-link" href="?{{ query_paginacion }}page={{ pagina.next_page_number }}">Siguiente</a>{% else %}<span class="page-link">Siguiente</span>{% endif %}</li>
+</ul></nav>
+{% endif %}
+{% endblock %}

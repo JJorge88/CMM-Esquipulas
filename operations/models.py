@@ -128,6 +128,9 @@ class TipoRecurso(models.Model):
     nombre = models.CharField(max_length=100, unique=True)
     descripcion = models.TextField(blank=True)
     activo = models.BooleanField(default=True)
+    es_camara = models.BooleanField(
+        default=False, verbose_name="Es cámara de videovigilancia"
+    )
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
 

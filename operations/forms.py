@@ -2,10 +2,79 @@ from django import forms
 from django.contrib.auth.models import User
 
 from accounts.models import PerfilUsuario
+from incidents.models import Incidente
+
+from .services import ESTADOS_ACTIVOS, incidentes_activos
 
 from .models import (
     AsignacionTurno, InstitucionApoyo, RecursoInstitucional, TipoRecurso, Turno,
 )
+
+
+class FiltroIncidentesActivosForm(forms.Form):
+    busqueda = forms.CharField(
+        required=False, label="Buscar",
+        widget=forms.TextInput(attrs={
+            "class": "form-control", "placeholder": "ID, ubicación o descripción",
+        }),
+    )
+    estado = forms.ChoiceField(
+        required=False, label="Estado",
+        choices=[("", "Todos los estados"), *(
+            (valor, etiqueta) for valor, etiqueta in Incidente.Estado.choices
+            if valor in ESTADOS_ACTIVOS
+        )],
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+    tipo = forms.ChoiceField(
+        required=False, label="Tipo",
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+    prioridad = forms.ChoiceField(
+        required=False, label="Prioridad",
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+    operador = forms.ModelChoiceField(
+        required=False, queryset=User.objects.none(),
+        label="Operador", empty_label="Todos los operadores",
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+    institucion = forms.ModelChoiceField(
+        required=False, queryset=InstitucionApoyo.objects.none(),
+        label="Institución", empty_label="Todas las instituciones",
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+    camara = forms.ModelChoiceField(
+        required=False, queryset=RecursoInstitucional.objects.none(),
+        label="Cámara", empty_label="Todas las cámaras",
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        activos = incidentes_activos()
+        tipos = activos.order_by("tipo_incidente").values_list(
+            "tipo_incidente", flat=True
+        ).distinct()
+        prioridades = activos.order_by("prioridad").values_list(
+            "prioridad", flat=True
+        ).distinct()
+        self.fields["tipo"].choices = [
+            ("", "Todos los tipos"), *((valor, valor) for valor in tipos)
+        ]
+        self.fields["prioridad"].choices = [
+            ("", "Todas las prioridades"),
+            *((valor, valor) for valor in prioridades),
+        ]
+        self.fields["operador"].queryset = User.objects.filter(
+            incidentes_asignados__estado__in=ESTADOS_ACTIVOS
+        ).distinct().order_by("username")
+        self.fields["institucion"].queryset = InstitucionApoyo.objects.filter(
+            participaciones_incidentes__incidente__estado__in=ESTADOS_ACTIVOS
+        ).distinct().order_by("nombre", "pk")
+        self.fields["camara"].queryset = RecursoInstitucional.objects.filter(
+            incidentes_detectados__estado__in=ESTADOS_ACTIVOS
+        ).distinct().order_by("nombre", "pk")
 
 
 class TurnoForm(forms.ModelForm):
@@ -170,6 +239,19 @@ class RecursoForm(forms.ModelForm):
         return valor
 
 
+class CamaraForm(RecursoForm):
+    class Meta(RecursoForm.Meta):
+        fields = (
+            "nombre", "tipo", "codigo_interno", "ubicacion", "estado", "activo",
+        )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["tipo"].queryset = TipoRecurso.objects.filter(
+            activo=True, es_camara=True
+        ).order_by("nombre")
+
+
 class FiltroRecursosForm(forms.Form):
     busqueda = forms.CharField(
         required=False, label="Buscar",
@@ -198,10 +280,11 @@ class FiltroRecursosForm(forms.Form):
 class TipoRecursoForm(forms.ModelForm):
     class Meta:
         model = TipoRecurso
-        fields = ("nombre", "descripcion", "activo")
+        fields = ("nombre", "descripcion", "es_camara", "activo")
         widgets = {
             "nombre": forms.TextInput(attrs={"class": "form-control"}),
             "descripcion": forms.Textarea(attrs={"class": "form-control", "rows": 4}),
+            "es_camara": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "activo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
 

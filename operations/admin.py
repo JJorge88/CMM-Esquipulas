@@ -44,8 +44,8 @@ class AsignacionTurnoAdmin(admin.ModelAdmin):
 
 @admin.register(TipoRecurso)
 class TipoRecursoAdmin(admin.ModelAdmin):
-    list_display = ("nombre", "activo", "fecha_creacion")
-    list_filter = ("activo",)
+    list_display = ("nombre", "es_camara", "activo", "fecha_creacion")
+    list_filter = ("es_camara", "activo")
     search_fields = ("nombre", "descripcion")
 
 

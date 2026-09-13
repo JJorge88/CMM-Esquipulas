@@ -52,6 +52,11 @@ def obtener_navegacion(usuario):
     )
     return {
         "menu": menu,
+        "mostrar_incidentes_activos": rol in (
+            PerfilUsuario.Rol.ADMINISTRADOR, PerfilUsuario.Rol.COORDINADOR,
+            PerfilUsuario.Rol.OPERADOR, PerfilUsuario.Rol.CONSULTA,
+            PerfilUsuario.Rol.AUDITOR,
+        ),
         "rol_usuario": perfil.get_rol_display() if perfil else "Sin rol asignado",
         "puede_registrar_incidente": rol in ROLES_REGISTRO_INCIDENTES,
         "mostrar_mis_turnos": rol == PerfilUsuario.Rol.OPERADOR,

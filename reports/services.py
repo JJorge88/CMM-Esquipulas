@@ -29,6 +29,7 @@ def _filtrar_por_periodo(queryset, fecha_desde=None, fecha_hasta=None):
 def _filtrar_incidentes(
     queryset, fecha_desde=None, fecha_hasta=None, *, estado=None,
     tipo=None, prioridad=None, operador_id=None, institucion_id=None,
+    camara_id=None,
 ):
     if estado is not None and estado not in Incidente.Estado.values:
         raise ValidationError("El estado indicado no es válido.")
@@ -41,6 +42,8 @@ def _filtrar_incidentes(
         queryset = queryset.filter(prioridad=prioridad)
     if operador_id is not None:
         queryset = queryset.filter(operador_responsable_id=operador_id)
+    if camara_id is not None:
+        queryset = queryset.filter(camara_origen_id=camara_id)
     if institucion_id is not None:
         participaciones = ParticipacionInstitucion.objects.filter(
             institucion_id=institucion_id
@@ -184,6 +187,33 @@ def obtener_incidentes_por_institucion(
     )
 
 
+def obtener_incidentes_por_camara(fecha_desde=None, fecha_hasta=None, **filtros):
+    incidentes = _filtrar_incidentes(
+        Incidente.objects.filter(camara_origen__isnull=False),
+        fecha_desde,
+        fecha_hasta,
+        **filtros,
+    )
+    filas = (
+        incidentes.values(
+            camara_id=F("camara_origen_id"),
+            nombre=F("camara_origen__nombre"),
+            ubicacion_camara=F("camara_origen__ubicacion"),
+        )
+        .annotate(cantidad=Count("id"))
+        .order_by("-cantidad", "nombre", "camara_id")
+    )
+    return [
+        {
+            "camara_id": fila["camara_id"],
+            "nombre": fila["nombre"],
+            "ubicacion": fila["ubicacion_camara"],
+            "cantidad": fila["cantidad"],
+        }
+        for fila in filas
+    ]
+
+
 def obtener_incidentes_por_dia(fecha_desde=None, fecha_hasta=None, **filtros):
     incidentes = _filtrar_incidentes(
         Incidente.objects.all(),
@@ -207,6 +237,7 @@ def buscar_incidentes(
     prioridad=None,
     operador_id=None,
     institucion_id=None,
+    camara_id=None,
 ):
     incidentes = _filtrar_incidentes(
         Incidente.objects.all(),
@@ -214,10 +245,11 @@ def buscar_incidentes(
         fecha_hasta,
         estado=estado, tipo=tipo, prioridad=prioridad,
         operador_id=operador_id, institucion_id=institucion_id,
+        camara_id=camara_id,
     )
 
     return (
-        incidentes.select_related("operador_responsable")
+        incidentes.select_related("operador_responsable", "camara_origen")
         .prefetch_related("participaciones_institucionales__institucion")
         .distinct()
         .order_by("-fecha_hora_reporte")

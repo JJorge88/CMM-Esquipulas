@@ -3,65 +3,98 @@
 {% block title %}Registrar incidente | CMM Esquipulas{% endblock %}
 
 {% block content %}
-<div class="page-heading mb-4">
-    <h1 class="h2 mb-1">Registrar incidente</h1>
-    <p class="text-secondary mb-0">Complete la información del acontecimiento reportado.</p>
-</div>
-
-<form method="post" action="{% url 'incidents:create' %}" class="incident-form form-layout">
-    {% csrf_token %}
-    {% if formulario.non_field_errors %}<div class="alert alert-danger" role="alert">{{ formulario.non_field_errors }}</div>{% endif %}
-    <section class="card dashboard-card mb-4" aria-labelledby="general-titulo">
-        <div class="card-header"><h2 class="h5 mb-0" id="general-titulo">Información general</h2></div>
-        <div class="card-body row g-3">
-            <div class="col-12 col-md-4">
-                <label class="form-label" for="{{ formulario.fecha_hora_reporte.id_for_label }}">{{ formulario.fecha_hora_reporte.label }}</label>
-                {{ formulario.fecha_hora_reporte }}
-                {% for error in formulario.fecha_hora_reporte.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
-            </div>
-            <div class="col-12 col-md-4">
-                <label class="form-label" for="{{ formulario.tipo_incidente.id_for_label }}">{{ formulario.tipo_incidente.label }}</label>
-                {{ formulario.tipo_incidente }}
-                {% for error in formulario.tipo_incidente.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
-            </div>
-            <div class="col-12 col-md-4">
-                <label class="form-label" for="{{ formulario.prioridad.id_for_label }}">{{ formulario.prioridad.label }}</label>
-                {{ formulario.prioridad }}
-                {% for error in formulario.prioridad.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
-            </div>
-        </div>
-    </section>
-
-    <section class="card dashboard-card mb-4" aria-labelledby="ubicacion-titulo">
-        <div class="card-header"><h2 class="h5 mb-0" id="ubicacion-titulo">Ubicación</h2></div>
-        <div class="card-body">
-            <label class="form-label" for="{{ formulario.ubicacion.id_for_label }}">{{ formulario.ubicacion.label }}</label>
-            {{ formulario.ubicacion }}
-            {% for error in formulario.ubicacion.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
-        </div>
-    </section>
-
-    <section class="card dashboard-card mb-4" aria-labelledby="descripcion-titulo">
-        <div class="card-header"><h2 class="h5 mb-0" id="descripcion-titulo">Descripción</h2></div>
-        <div class="card-body">
-            <label class="form-label" for="{{ formulario.descripcion.id_for_label }}">{{ formulario.descripcion.label }}</label>
-            {{ formulario.descripcion }}
-            {% for error in formulario.descripcion.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
-        </div>
-    </section>
-
-    <section class="card dashboard-card mb-4" aria-labelledby="asignacion-titulo">
-        <div class="card-header"><h2 class="h5 mb-0" id="asignacion-titulo">Asignación y monitoreo</h2></div>
-        <div class="card-body">
-            <p class="text-secondary mb-1">Operador responsable</p>
-            <p class="fw-semibold mb-0">{{ request.user.get_full_name|default:request.user.username }}</p>
-            <p class="text-secondary small mb-0">Se asignará automáticamente al guardar.</p>
-        </div>
-    </section>
-
-    <div class="d-flex flex-wrap gap-2 justify-content-end">
-        <a class="btn btn-outline-secondary" href="{% url 'incidents:list' %}">Cancelar</a>
-        <button class="btn btn-primary" type="submit">Registrar incidente</button>
+<div class="incident-quick-page">
+    <div class="page-heading incident-quick-heading">
+        <a class="incident-quick-back" href="{% url 'incidents:list' %}">
+            <i class="bi bi-arrow-left" aria-hidden="true"></i> Incidentes
+        </a>
+        <h1 class="h2 mb-1">Registrar incidente</h1>
+        <p class="text-secondary mb-0">Solo los datos esenciales para iniciar la atención.</p>
     </div>
-</form>
+
+    <form method="post" action="{% url 'incidents:create' %}" class="incident-form">
+        {% csrf_token %}
+        {% if formulario.errors %}
+        <div class="alert alert-danger" role="alert">
+            <p class="fw-semibold mb-2">Revise los campos señalados antes de guardar:</p>
+            <ul class="mb-0">
+                {% for campo in formulario %}
+                    {% for error in campo.errors %}
+                    <li><a href="#{{ campo.id_for_label }}">{{ campo.label }}: {{ error }}</a></li>
+                    {% endfor %}
+                {% endfor %}
+                {% for error in formulario.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <section class="card dashboard-card incident-quick-card" aria-labelledby="registro-rapido-titulo">
+            <div class="card-header incident-quick-card-header">
+                <div>
+                    <h2 class="h5 mb-1" id="registro-rapido-titulo">Registro rápido</h2>
+                    <p class="text-secondary small mb-0">Complete cuatro datos. La cámara es opcional.</p>
+                </div>
+                <span class="badge text-bg-info">Estado inicial: Registrado</span>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-12 col-md-7">
+                        <label class="form-label" for="{{ formulario.ubicacion.id_for_label }}">{{ formulario.ubicacion.label }} <span aria-hidden="true">*</span></label>
+                        {{ formulario.ubicacion }}
+                        <div class="form-text">Indique la ubicación del incidente o una referencia adicional.</div>
+                        {% for error in formulario.ubicacion.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                    </div>
+                    <div class="col-12 col-md-5">
+                        <label class="form-label" for="{{ formulario.camara_origen.id_for_label }}">{{ formulario.camara_origen.label }}</label>
+                        {{ formulario.camara_origen }}
+                        <div class="form-text">Solo si se detectó por videovigilancia.</div>
+                        {% for error in formulario.camara_origen.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="{{ formulario.descripcion.id_for_label }}">¿Qué ocurrió? <span aria-hidden="true">*</span></label>
+                        {{ formulario.descripcion }}
+                        {% for error in formulario.descripcion.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="{{ formulario.tipo_incidente.id_for_label }}">{{ formulario.tipo_incidente.label }} <span aria-hidden="true">*</span></label>
+                        {{ formulario.tipo_incidente }}
+                        <datalist id="tipos-incidente-sugeridos">
+                            {% for valor in tipos_sugeridos %}<option value="{{ valor }}"></option>{% endfor %}
+                        </datalist>
+                        {% for error in formulario.tipo_incidente.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="{{ formulario.prioridad.id_for_label }}">{{ formulario.prioridad.label }} <span aria-hidden="true">*</span></label>
+                        {{ formulario.prioridad }}
+                        <datalist id="prioridades-sugeridas">
+                            {% for valor in prioridades_sugeridas %}<option value="{{ valor }}"></option>{% endfor %}
+                        </datalist>
+                        {% for error in formulario.prioridad.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="incident-quick-meta">
+                <div>
+                    <label class="form-label mb-1" for="{{ formulario.fecha_hora_reporte.id_for_label }}">{{ formulario.fecha_hora_reporte.label }}</label>
+                    {{ formulario.fecha_hora_reporte }}
+                    <div id="fecha-reporte-ayuda" class="form-text">Hora actual sugerida; puede cambiarla.</div>
+                    {% for error in formulario.fecha_hora_reporte.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="incident-quick-operator">
+                    <span class="text-secondary small">Operador responsable</span>
+                    <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>
+                </div>
+            </div>
+            <div class="incident-quick-actions">
+                <span class="text-secondary small">* Campos obligatorios</span>
+                <div class="d-flex gap-2">
+                    <a class="btn btn-outline-secondary" href="{% url 'incidents:list' %}">Cancelar</a>
+                    <button class="btn btn-primary" type="submit">
+                        <i class="bi bi-check-lg me-1" aria-hidden="true"></i>Guardar incidente
+                    </button>
+                </div>
+            </div>
+        </section>
+    </form>
+</div>
 {% endblock %}

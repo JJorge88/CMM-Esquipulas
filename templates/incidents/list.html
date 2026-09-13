@@ -25,6 +25,7 @@
                 <div class="col-12 col-sm-6 col-lg-3"><label class="form-label" for="{{ filtros.tipo.id_for_label }}">Tipo de incidente</label>{{ filtros.tipo }}{% for error in filtros.tipo.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>
                 <div class="col-12 col-sm-6 col-lg-2"><label class="form-label" for="{{ filtros.estado.id_for_label }}">Estado</label>{{ filtros.estado }}{% for error in filtros.estado.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>
                 <div class="col-12 col-sm-6 col-lg-2"><label class="form-label" for="{{ filtros.prioridad.id_for_label }}">Prioridad</label>{{ filtros.prioridad }}{% for error in filtros.prioridad.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>
+                <div class="col-12 col-sm-6 col-lg-3"><label class="form-label" for="{{ filtros.camara.id_for_label }}">{{ filtros.camara.label }}</label>{{ filtros.camara }}{% for error in filtros.camara.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>
                 <div class="col-12 col-sm-6 col-lg-3"><label class="form-label" for="{{ filtros.fecha_desde.id_for_label }}">Fecha desde</label>{{ filtros.fecha_desde }}{% for error in filtros.fecha_desde.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>
                 <div class="col-12 col-sm-6 col-lg-3"><label class="form-label" for="{{ filtros.fecha_hasta.id_for_label }}">Fecha hasta</label>{{ filtros.fecha_hasta }}{% for error in filtros.fecha_hasta.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>
                 <div class="col-12 col-lg-6 d-flex flex-wrap align-items-end gap-2">
@@ -53,7 +54,7 @@
                             <td><a class="fw-semibold" href="{% url 'incidents:detail' incidente.pk %}" aria-label="Ver incidente {{ incidente.id }}">{{ incidente.id }}</a></td>
                             <td class="text-nowrap">{{ incidente.fecha_hora_reporte|date:"d/m/Y H:i" }}</td>
                             <td>{{ incidente.tipo_incidente }}</td>
-                            <td>{{ incidente.ubicacion }}</td>
+                            <td>{{ incidente.ubicacion }}{% if incidente.camara_origen %}<span class="d-block small text-secondary">Cámara: {{ incidente.camara_origen.nombre }}</span>{% endif %}</td>
                             <td><span class="priority-pill">{{ incidente.prioridad }}</span></td>
                             <td>
                                 <span class="badge {% if incidente.estado == 'CERRADO' %}text-bg-secondary{% elif incidente.estado == 'RESUELTO' %}text-bg-success{% elif incidente.estado == 'EN_SEGUIMIENTO' %}text-bg-info{% elif incidente.estado == 'REGISTRADO' %}text-bg-primary{% else %}text-bg-warning{% endif %}">

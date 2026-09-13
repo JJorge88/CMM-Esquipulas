@@ -9,6 +9,7 @@ from incidents.models import Incidente
 from .forms import FiltrosReportesForm
 from .services import (
     buscar_incidentes,
+    obtener_incidentes_por_camara,
     obtener_incidentes_por_dia,
     obtener_incidentes_por_estado,
     obtener_incidentes_por_institucion,
@@ -54,7 +55,10 @@ def panel_estadistico(request):
     }
     graficas = {
         nombre: {"labels": [], "values": []}
-        for nombre in ("dia", "estado", "tipo", "prioridad", "operador", "institucion")
+        for nombre in (
+            "dia", "estado", "tipo", "prioridad", "operador",
+            "institucion", "camara",
+        )
     }
     if criterios is not None:
         resumen = obtener_resumen_incidentes(**criterios)
@@ -64,6 +68,7 @@ def panel_estadistico(request):
         por_prioridad = obtener_incidentes_por_prioridad(**criterios)
         por_operador = obtener_incidentes_por_operador(**criterios)
         por_institucion = obtener_incidentes_por_institucion(**criterios)
+        por_camara = obtener_incidentes_por_camara(**criterios)
         graficas = {
             "dia": {
                 "labels": [fila["fecha"].isoformat() for fila in por_dia],
@@ -83,6 +88,14 @@ def panel_estadistico(request):
                 "values": [fila["cantidad"] for fila in por_operador],
             },
             "institucion": _valores(por_institucion, "nombre"),
+            "camara": {
+                "labels": [
+                    f"{fila['nombre']} — {fila['ubicacion']}"
+                    if fila["ubicacion"] else fila["nombre"]
+                    for fila in por_camara
+                ],
+                "values": [fila["cantidad"] for fila in por_camara],
+            },
         }
     return render(request, "reports/index.html", {
         **obtener_navegacion(request.user), "filtros": filtros,

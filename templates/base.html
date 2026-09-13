@@ -29,6 +29,7 @@
                         {% for subopcion in opcion.subopciones %}<a class="sidebar-sublink {% if subopcion.titulo == 'Turnos' and '/operacion/turnos/' in request.path or subopcion.titulo == 'Asignaciones' and '/operacion/asignaciones/' in request.path or subopcion.titulo == 'Instituciones' and '/operacion/instituciones/' in request.path or subopcion.titulo == 'Recursos' and '/operacion/recursos/' in request.path or subopcion.titulo == 'Tipos de recurso' and '/operacion/tipos-recurso/' in request.path %}active{% endif %}" href="{% url subopcion.url %}">{{ subopcion.titulo }}</a>{% endfor %}
                     {% endif %}
                 {% endfor %}
+                {% if mostrar_incidentes_activos %}<a class="sidebar-link {% if '/operacion/incidentes-activos/' in request.path %}active{% endif %}" href="{% url 'operations:active_incidents' %}"><i class="bi bi-activity nav-symbol" aria-hidden="true"></i> Incidentes activos</a>{% endif %}
                 {% if mostrar_mis_turnos %}<a class="sidebar-link {% if '/operacion/asignaciones/' in request.path %}active{% endif %}" href="{% url 'operations:assignment_list' %}"><i class="bi bi-calendar-week nav-symbol" aria-hidden="true"></i>Mis turnos</a>{% endif %}
                 {% if mostrar_instituciones %}<a class="sidebar-link {% if '/operacion/instituciones/' in request.path %}active{% endif %}" href="{% url 'operations:institution_list' %}"><i class="bi bi-buildings nav-symbol" aria-hidden="true"></i>Instituciones</a>{% endif %}
                 {% if mostrar_recursos %}<a class="sidebar-link {% if '/operacion/recursos/' in request.path %}active{% endif %}" href="{% url 'operations:resource_list' %}"><i class="bi bi-box-seam nav-symbol" aria-hidden="true"></i>Recursos</a>{% endif %}
@@ -69,6 +70,7 @@
                                     {% for subopcion in opcion.subopciones %}<a class="mobile-sublink" href="{% url subopcion.url %}">{{ subopcion.titulo }}</a>{% endfor %}
                                 {% endif %}
                             {% endfor %}
+                            {% if mostrar_incidentes_activos %}<a class="mobile-link" href="{% url 'operations:active_incidents' %}">Incidentes activos</a>{% endif %}
                             {% if mostrar_mis_turnos %}<a class="mobile-link" href="{% url 'operations:assignment_list' %}">Mis turnos</a>{% endif %}
                             {% if mostrar_instituciones %}<a class="mobile-link" href="{% url 'operations:institution_list' %}">Instituciones</a>{% endif %}
                             {% if mostrar_recursos %}<a class="mobile-link" href="{% url 'operations:resource_list' %}">Recursos</a>{% endif %}
