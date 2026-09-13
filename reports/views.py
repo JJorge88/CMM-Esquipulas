@@ -6,11 +6,13 @@ from accounts.navigation import obtener_navegacion
 from accounts.permissions import roles_permitidos
 from incidents.models import Incidente
 
-from .forms import FiltrosReportesForm
+from .forms import ComparacionPeriodosForm, FiltrosReportesForm
 from .services import (
     DIAS_SEMANA,
     HORAS_DIA,
     buscar_incidentes,
+    comparar_periodos,
+    INDICADORES_COMPARACION,
     obtener_incidentes_por_camara,
     obtener_incidentes_por_dia,
     obtener_incidentes_por_dia_semana,
@@ -45,6 +47,90 @@ def _valores(filas, etiqueta):
         "labels": [fila[etiqueta] for fila in filas],
         "values": [fila["cantidad"] for fila in filas],
     }
+
+
+def _duracion_humana(valor, *, con_signo=False):
+    if valor is None:
+        return "—"
+    segundos = round(abs(valor.total_seconds()))
+    horas, resto = divmod(segundos, 3600)
+    minutos, segundos = divmod(resto, 60)
+    if horas:
+        texto = f"{horas} h {minutos:02d} min"
+    elif minutos:
+        texto = f"{minutos} min"
+    else:
+        texto = f"{segundos} s" if segundos else "0 min"
+    if con_signo and valor.total_seconds() != 0:
+        return ("+" if valor.total_seconds() > 0 else "−") + texto
+    return texto
+
+
+def _indicadores_para_plantilla(comparacion):
+    filas = []
+    for clave, etiqueta in INDICADORES_COMPARACION:
+        dato = comparacion["indicadores"][clave]
+        duracion = clave.startswith("tiempo_promedio_")
+        porcentaje = clave == "porcentaje_cerrados"
+
+        def mostrar(valor, *, diferencia=False):
+            if valor is None:
+                return "—"
+            if duracion:
+                return _duracion_humana(valor, con_signo=diferencia)
+            if porcentaje:
+                return f"{valor:+.1f} p.p." if diferencia else f"{valor:.1f} %"
+            return f"{valor:+d}" if diferencia and valor else str(valor)
+
+        variacion_porcentual = dato["variacion_porcentual"]
+        filas.append({
+            "clave": clave, "etiqueta": etiqueta,
+            "actual": mostrar(dato["actual"]),
+            "anterior": mostrar(dato["anterior"]),
+            "diferencia": mostrar(dato["variacion_absoluta"], diferencia=True),
+            "variacion_porcentual": (
+                f"{variacion_porcentual:+.2f} %"
+                if variacion_porcentual is not None else "No comparable"
+            ),
+            "tendencia": dato["tendencia"],
+        })
+    return filas
+
+
+@roles_permitidos(*ROLES_REPORTES)
+def comparacion_periodos(request):
+    formulario = ComparacionPeriodosForm(request.GET or None)
+    comparacion = None
+    indicadores = []
+    graficas = {}
+    if request.GET and formulario.is_valid():
+        datos = formulario.cleaned_data
+        comparacion = comparar_periodos(
+            datos["actual_desde"], datos["actual_hasta"],
+            datos["anterior_desde"], datos["anterior_hasta"],
+            camara_id=datos["camara"].pk if datos["camara"] else None,
+        )
+        indicadores = _indicadores_para_plantilla(comparacion)
+        for clave, etiqueta in (
+            ("por_tipo", "tipo"), ("por_prioridad", "prioridad"),
+            ("por_camara", "camara"), ("por_institucion", "institucion"),
+        ):
+            filas = comparacion[clave]
+            graficas[clave] = {
+                "labels": [
+                    f"{fila[etiqueta]} — {fila['ubicacion']}"
+                    if clave == "por_camara" and fila["ubicacion"]
+                    else fila[etiqueta] for fila in filas
+                ],
+                "actual": [fila["actual"] for fila in filas],
+                "anterior": [fila["anterior"] for fila in filas],
+            }
+    return render(request, "reports/comparison.html", {
+        **obtener_navegacion(request.user),
+        "formulario": formulario, "comparacion": comparacion,
+        "indicadores": indicadores, "tarjetas": indicadores[:4],
+        "graficas_comparacion": graficas,
+    })
 
 
 @roles_permitidos(*ROLES_REPORTES)

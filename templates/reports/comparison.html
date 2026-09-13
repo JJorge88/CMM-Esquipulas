@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Comparación de períodos | CMM Esquipulas{% endblock %}
+{% block content %}
+<div class="page-heading d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div><h1 class="h2 mb-1">Comparación de períodos</h1><p class="text-secondary mb-0">Variaciones descriptivas de incidentes registrados en dos períodos históricos.</p></div>
+    <a class="btn btn-outline-primary" href="{% url 'reports:index' %}"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i> Volver a reportes</a>
+</div>
+
+<section class="card dashboard-card filter-panel mb-4" aria-labelledby="comparacion-filtros-titulo">
+    <div class="card-header"><h2 class="h5 mb-0" id="comparacion-filtros-titulo">Seleccionar períodos</h2></div>
+    <div class="card-body"><form method="get" action="{% url 'reports:comparison' %}">
+        <div class="row g-4">
+            <fieldset class="col-12 col-lg-6"><legend class="h6 mb-3">Período actual</legend><div class="row g-3">
+                <div class="col-12 col-sm-6"><label class="form-label" for="{{ formulario.actual_desde.id_for_label }}">Desde</label>{{ formulario.actual_desde }}{% for error in formulario.actual_desde.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>
+                <div class="col-12 col-sm-6"><label class="form-label" for="{{ formulario.actual_hasta.id_for_label }}">Hasta</label>{{ formulario.actual_hasta }}{% for error in formulario.actual_hasta.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>
+            </div></fieldset>
+            <fieldset class="col-12 col-lg-6"><legend class="h6 mb-3">Comparar con</legend><div class="row g-3">
+                <div class="col-12 col-sm-6"><label class="form-label" for="{{ formulario.anterior_desde.id_for_label }}">Desde</label>{{ formulario.anterior_desde }}{% for error in formulario.anterior_desde.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>
+                <div class="col-12 col-sm-6"><label class="form-label" for="{{ formulario.anterior_hasta.id_for_label }}">Hasta</label>{{ formulario.anterior_hasta }}{% for error in formulario.anterior_hasta.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>
+            </div></fieldset>
+            <div class="col-12 col-md-5"><label class="form-label" for="{{ formulario.camara.id_for_label }}">{{ formulario.camara.label }}</label>{{ formulario.camara }}{% for error in formulario.camara.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>
+            <div class="col-12 d-flex flex-wrap gap-2"><button class="btn btn-primary" type="submit"><i class="bi bi-bar-chart-steps me-1" aria-hidden="true"></i> Comparar</button><a class="btn btn-outline-secondary" href="{% url 'reports:comparison' %}">Limpiar</a></div>
+        </div>
+    </form></div>
+</section>
+
+{% if comparacion %}
+    {% if not comparacion.actual.total_incidentes and not comparacion.anterior.total_incidentes %}<div class="alert alert-info" role="status">No hay incidentes en ninguno de los períodos seleccionados.</div>{% elif not comparacion.actual.total_incidentes %}<div class="alert alert-info" role="status">El período actual no contiene incidentes.</div>{% elif not comparacion.anterior.total_incidentes %}<div class="alert alert-info" role="status">El período de comparación no contiene incidentes. Las variaciones porcentuales pueden no ser comparables.</div>{% endif %}
+
+    <section class="row g-3 mb-4" aria-label="Tarjetas comparativas">
+        {% for fila in tarjetas %}<div class="col-12 col-sm-6 col-xl-3"><div class="card indicator-card h-100"><div class="card-body"><h2 class="h6 text-secondary mb-3">{{ fila.etiqueta }}</h2><div class="d-flex justify-content-between gap-2"><div><span class="small text-secondary d-block">Actual</span><strong class="h4">{{ fila.actual }}</strong></div><div><span class="small text-secondary d-block">Anterior</span><strong class="h4">{{ fila.anterior }}</strong></div></div><div class="small text-secondary mt-2">Variación: {% if fila.tendencia == 'incremento' %}<i class="bi bi-arrow-up" aria-label="Incremento"></i>{% elif fila.tendencia == 'disminucion' %}<i class="bi bi-arrow-down" aria-label="Disminución"></i>{% elif fila.tendencia == 'sin_cambio' %}<i class="bi bi-dash" aria-label="Sin cambio"></i>{% endif %} {{ fila.diferencia }} · {{ fila.variacion_porcentual }}</div></div></div></div>{% endfor %}
+    </section>
+
+    <section class="card dashboard-card mb-4" aria-labelledby="resumen-comparacion-titulo"><div class="card-header"><h2 class="h5 mb-0" id="resumen-comparacion-titulo">Resumen comparativo</h2></div><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead><tr><th scope="col">Indicador</th><th scope="col">Actual</th><th scope="col">Anterior</th><th scope="col">Diferencia</th><th scope="col">Variación %</th></tr></thead><tbody>
+        {% for fila in indicadores %}<tr><th scope="row">{{ fila.etiqueta }}</th><td>{{ fila.actual }}</td><td>{{ fila.anterior }}</td><td class="text-nowrap">{% if fila.tendencia == 'incremento' %}<i class="bi bi-arrow-up text-secondary" aria-label="Incremento"></i>{% elif fila.tendencia == 'disminucion' %}<i class="bi bi-arrow-down text-secondary" aria-label="Disminución"></i>{% elif fila.tendencia == 'sin_cambio' %}<i class="bi bi-dash text-secondary" aria-label="Sin cambio"></i>{% endif %} {{ fila.diferencia }}</td><td class="text-nowrap">{{ fila.variacion_porcentual }}</td></tr>{% endfor %}
+    </tbody></table></div></section>
+
+    <section aria-labelledby="categorias-comparacion-titulo"><h2 class="h4 mb-3" id="categorias-comparacion-titulo">Comparación por categoría</h2><div id="comparacion-graficas-error" class="alert alert-warning d-none" role="alert">No se pudieron cargar las gráficas. Los datos de las tablas siguen disponibles.</div><div class="row g-4">
+        <div class="col-12 col-xl-6"><div class="card dashboard-card h-100"><div class="card-header"><h3 class="h5 mb-0">Por tipo</h3></div><div class="card-body">{% if comparacion.por_tipo %}<div class="chart-wrap"><canvas data-comparison-chart="por_tipo" aria-label="Comparación por tipo" role="img"></canvas></div>{% else %}<p class="text-secondary mb-0">Sin tipos de incidente en estos períodos.</p>{% endif %}</div></div></div>
+        <div class="col-12 col-xl-6"><div class="card dashboard-card h-100"><div class="card-header"><h3 class="h5 mb-0">Por prioridad</h3></div><div class="card-body">{% if comparacion.por_prioridad %}<div class="chart-wrap"><canvas data-comparison-chart="por_prioridad" aria-label="Comparación por prioridad" role="img"></canvas></div>{% else %}<p class="text-secondary mb-0">Sin prioridades en estos períodos.</p>{% endif %}</div></div></div>
+        <div class="col-12 col-xl-6"><div class="card dashboard-card h-100"><div class="card-header"><h3 class="h5 mb-0">Por cámara</h3></div><div class="card-body">{% if comparacion.por_camara %}<div class="chart-wrap"><canvas data-comparison-chart="por_camara" aria-label="Comparación por cámara" role="img"></canvas></div>{% else %}<p class="text-secondary mb-0">Sin cámaras asociadas en estos períodos.</p>{% endif %}</div></div></div>
+        <div class="col-12 col-xl-6"><div class="card dashboard-card h-100"><div class="card-header"><h3 class="h5 mb-0">Por institución</h3></div><div class="card-body">{% if comparacion.por_institucion %}<div class="chart-wrap"><canvas data-comparison-chart="por_institucion" aria-label="Comparación por institución" role="img"></canvas></div>{% else %}<p class="text-secondary mb-0">Sin instituciones participantes en estos períodos.</p>{% endif %}</div></div></div>
+    </div></section>
+
+    <section class="row g-4 mt-1" aria-label="Detalle comparativo por categoría">
+        <div class="col-12 col-xl-6"><div class="card dashboard-card h-100"><div class="card-header"><h3 class="h5 mb-0">Detalle por tipo</h3></div><div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>Tipo</th><th>Actual</th><th>Anterior</th><th>Diferencia</th></tr></thead><tbody>{% for fila in comparacion.por_tipo %}<tr><th scope="row">{{ fila.tipo }}</th><td>{{ fila.actual }}</td><td>{{ fila.anterior }}</td><td>{{ fila.diferencia }}</td></tr>{% empty %}<tr><td colspan="4" class="text-secondary">Sin datos.</td></tr>{% endfor %}</tbody></table></div></div></div>
+        <div class="col-12 col-xl-6"><div class="card dashboard-card h-100"><div class="card-header"><h3 class="h5 mb-0">Detalle por prioridad</h3></div><div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>Prioridad</th><th>Actual</th><th>Anterior</th><th>Diferencia</th></tr></thead><tbody>{% for fila in comparacion.por_prioridad %}<tr><th scope="row">{{ fila.prioridad }}</th><td>{{ fila.actual }}</td><td>{{ fila.anterior }}</td><td>{{ fila.diferencia }}</td></tr>{% empty %}<tr><td colspan="4" class="text-secondary">Sin datos.</td></tr>{% endfor %}</tbody></table></div></div></div>
+        <div class="col-12 col-xl-6"><div class="card dashboard-card h-100"><div class="card-header"><h3 class="h5 mb-0">Detalle por cámara</h3></div><div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>Cámara</th><th>Ubicación</th><th>Actual</th><th>Anterior</th><th>Diferencia</th></tr></thead><tbody>{% for fila in comparacion.por_camara %}<tr><th scope="row">{{ fila.camara }}</th><td>{{ fila.ubicacion|default:'—' }}</td><td>{{ fila.actual }}</td><td>{{ fila.anterior }}</td><td>{{ fila.diferencia }}</td></tr>{% empty %}<tr><td colspan="5" class="text-secondary">Sin datos.</td></tr>{% endfor %}</tbody></table></div></div></div>
+        <div class="col-12 col-xl-6"><div class="card dashboard-card h-100"><div class="card-header"><h3 class="h5 mb-0">Detalle por institución</h3></div><div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>Institución</th><th>Siglas</th><th>Actual</th><th>Anterior</th><th>Diferencia</th></tr></thead><tbody>{% for fila in comparacion.por_institucion %}<tr><th scope="row">{{ fila.institucion }}</th><td>{{ fila.siglas|default:'—' }}</td><td>{{ fila.actual }}</td><td>{{ fila.anterior }}</td><td>{{ fila.diferencia }}</td></tr>{% empty %}<tr><td colspan="5" class="text-secondary">Sin datos.</td></tr>{% endfor %}</tbody></table></div></div></div>
+    </section>
+    {{ graficas_comparacion|json_script:'datos-comparacion' }}
+{% elif request.GET and not formulario.is_valid %}
+    <div class="alert alert-warning" role="alert">Revise las fechas y la cámara seleccionadas para realizar la comparación.</div>
+{% else %}
+    <div class="alert alert-info" role="status">Seleccione dos períodos y pulse Comparar para ver los resultados.</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js" defer></script>
+<script src="{% static 'js/report_comparison.js' %}" defer></script>
+{% endblock %}

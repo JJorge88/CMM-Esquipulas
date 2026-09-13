@@ -289,6 +289,119 @@ def obtener_maximos_temporales(cantidades):
     return [etiqueta for etiqueta, cantidad in cantidades.items() if cantidad == mayor]
 
 
+INDICADORES_COMPARACION = (
+    ("total_incidentes", "Total de incidentes"),
+    ("registrados", "Registrados"),
+    ("pendientes", "Pendientes"),
+    ("en_seguimiento", "En seguimiento"),
+    ("resueltos", "Resueltos"),
+    ("cerrados", "Cerrados"),
+    ("porcentaje_cerrados", "Porcentaje de cerrados"),
+    ("total_evidencias", "Total de evidencias"),
+    ("total_seguimientos", "Total de seguimientos"),
+    ("tiempo_promedio_atencion", "Tiempo promedio de atención"),
+    ("tiempo_promedio_resolucion", "Tiempo promedio de resolución"),
+)
+
+
+def calcular_variacion(actual, anterior):
+    """Variación neutral; None indica que falta un dato o no hay base comparable."""
+    if actual is None or anterior is None:
+        return {
+            "variacion_absoluta": None,
+            "variacion_porcentual": None,
+            "tendencia": None,
+        }
+    diferencia = actual - anterior
+    actual_num = actual.total_seconds() if hasattr(actual, "total_seconds") else actual
+    anterior_num = anterior.total_seconds() if hasattr(anterior, "total_seconds") else anterior
+    if anterior_num == 0:
+        porcentaje = 0.0 if actual_num == 0 else None
+    else:
+        porcentaje = (actual_num - anterior_num) / abs(anterior_num) * 100
+    return {
+        "variacion_absoluta": diferencia,
+        "variacion_porcentual": porcentaje,
+        "tendencia": (
+            "incremento" if actual_num > anterior_num
+            else "disminucion" if actual_num < anterior_num else "sin_cambio"
+        ),
+    }
+
+
+def _comparar_categorias(filas_actual, filas_anterior, *, clave, metadatos):
+    actuales = {fila[clave]: fila for fila in filas_actual}
+    anteriores = {fila[clave]: fila for fila in filas_anterior}
+    resultado = []
+    for identificador in actuales.keys() | anteriores.keys():
+        fuente = actuales.get(identificador) or anteriores[identificador]
+        actual = actuales.get(identificador, {}).get("cantidad", 0)
+        anterior = anteriores.get(identificador, {}).get("cantidad", 0)
+        variacion = calcular_variacion(actual, anterior)
+        resultado.append({
+            clave: identificador,
+            **{salida: fuente[origen] for salida, origen in metadatos.items()},
+            "actual": actual,
+            "anterior": anterior,
+            "diferencia": variacion["variacion_absoluta"],
+            "variacion_porcentual": variacion["variacion_porcentual"],
+            "tendencia": variacion["tendencia"],
+        })
+    etiqueta = next(iter(metadatos), clave)
+    return sorted(resultado, key=lambda fila: (str(fila[etiqueta]).casefold(), str(fila[clave])))
+
+
+def comparar_periodos(
+    actual_desde, actual_hasta, anterior_desde, anterior_hasta, camara_id=None,
+):
+    _validar_periodo(actual_desde, actual_hasta)
+    _validar_periodo(anterior_desde, anterior_hasta)
+    filtros_actual = {
+        "fecha_desde": actual_desde, "fecha_hasta": actual_hasta,
+        "camara_id": camara_id,
+    }
+    filtros_anterior = {
+        "fecha_desde": anterior_desde, "fecha_hasta": anterior_hasta,
+        "camara_id": camara_id,
+    }
+    resumen_actual = obtener_resumen_incidentes(**filtros_actual)
+    resumen_anterior = obtener_resumen_incidentes(**filtros_anterior)
+    indicadores = {
+        clave: {
+            "etiqueta": etiqueta,
+            "actual": resumen_actual[clave],
+            "anterior": resumen_anterior[clave],
+            **calcular_variacion(resumen_actual[clave], resumen_anterior[clave]),
+        }
+        for clave, etiqueta in INDICADORES_COMPARACION
+    }
+    return {
+        "actual": resumen_actual,
+        "anterior": resumen_anterior,
+        "indicadores": indicadores,
+        "por_tipo": _comparar_categorias(
+            obtener_incidentes_por_tipo(**filtros_actual),
+            obtener_incidentes_por_tipo(**filtros_anterior),
+            clave="tipo_incidente", metadatos={"tipo": "tipo_incidente"},
+        ),
+        "por_prioridad": _comparar_categorias(
+            obtener_incidentes_por_prioridad(**filtros_actual),
+            obtener_incidentes_por_prioridad(**filtros_anterior),
+            clave="prioridad", metadatos={"prioridad": "prioridad"},
+        ),
+        "por_camara": _comparar_categorias(
+            obtener_incidentes_por_camara(**filtros_actual),
+            obtener_incidentes_por_camara(**filtros_anterior),
+            clave="camara_id", metadatos={"camara": "nombre", "ubicacion": "ubicacion"},
+        ),
+        "por_institucion": _comparar_categorias(
+            obtener_incidentes_por_institucion(**filtros_actual),
+            obtener_incidentes_por_institucion(**filtros_anterior),
+            clave="institucion_id", metadatos={"institucion": "nombre", "siglas": "siglas"},
+        ),
+    }
+
+
 def buscar_incidentes(
     fecha_desde=None,
     fecha_hasta=None,

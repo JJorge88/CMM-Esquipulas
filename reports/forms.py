@@ -6,6 +6,43 @@ from incidents.models import Incidente
 from operations.models import InstitucionApoyo, RecursoInstitucional
 
 
+class ComparacionPeriodosForm(forms.Form):
+    actual_desde = forms.DateField(
+        label="Desde", widget=forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+    )
+    actual_hasta = forms.DateField(
+        label="Hasta", widget=forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+    )
+    anterior_desde = forms.DateField(
+        label="Desde", widget=forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+    )
+    anterior_hasta = forms.DateField(
+        label="Hasta", widget=forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+    )
+    camara = forms.ModelChoiceField(
+        required=False, queryset=RecursoInstitucional.objects.none(),
+        label="Cámara (opcional)", empty_label="Todas las cámaras",
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["camara"].queryset = RecursoInstitucional.objects.filter(
+            Q(tipo__es_camara=True) | Q(incidentes_detectados__isnull=False)
+        ).select_related("tipo").distinct().order_by("nombre", "pk")
+
+    def clean(self):
+        datos = super().clean()
+        for prefijo in ("actual", "anterior"):
+            desde, hasta = datos.get(f"{prefijo}_desde"), datos.get(f"{prefijo}_hasta")
+            if desde and hasta and desde > hasta:
+                self.add_error(
+                    f"{prefijo}_hasta",
+                    "La fecha final debe ser igual o posterior a la inicial.",
+                )
+        return datos
+
+
 class FiltrosReportesForm(forms.Form):
     fecha_desde = forms.DateField(
         required=False, label="Fecha desde",
