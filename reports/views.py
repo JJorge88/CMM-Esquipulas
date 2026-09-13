@@ -8,14 +8,19 @@ from incidents.models import Incidente
 
 from .forms import FiltrosReportesForm
 from .services import (
+    DIAS_SEMANA,
+    HORAS_DIA,
     buscar_incidentes,
     obtener_incidentes_por_camara,
     obtener_incidentes_por_dia,
+    obtener_incidentes_por_dia_semana,
     obtener_incidentes_por_estado,
+    obtener_incidentes_por_hora,
     obtener_incidentes_por_institucion,
     obtener_incidentes_por_operador,
     obtener_incidentes_por_prioridad,
     obtener_incidentes_por_tipo,
+    obtener_maximos_temporales,
     obtener_resumen_incidentes,
 )
 
@@ -60,6 +65,16 @@ def panel_estadistico(request):
             "institucion", "camara",
         )
     }
+    graficas["hora"] = {
+        "labels": [f"{hora}:00" for hora in HORAS_DIA],
+        "values": [0] * 24,
+    }
+    graficas["dia_semana"] = {
+        "labels": list(DIAS_SEMANA),
+        "values": [0] * 7,
+    }
+    hora_mayor_incidencia = []
+    dia_mayor_incidencia = []
     if criterios is not None:
         resumen = obtener_resumen_incidentes(**criterios)
         por_dia = obtener_incidentes_por_dia(**criterios)
@@ -69,6 +84,13 @@ def panel_estadistico(request):
         por_operador = obtener_incidentes_por_operador(**criterios)
         por_institucion = obtener_incidentes_por_institucion(**criterios)
         por_camara = obtener_incidentes_por_camara(**criterios)
+        por_hora = obtener_incidentes_por_hora(**criterios)
+        por_dia_semana = obtener_incidentes_por_dia_semana(**criterios)
+        hora_mayor_incidencia = [
+            f"{hora}:00 - {(int(hora) + 1) % 24:02d}:00"
+            for hora in obtener_maximos_temporales(por_hora)
+        ]
+        dia_mayor_incidencia = obtener_maximos_temporales(por_dia_semana)
         graficas = {
             "dia": {
                 "labels": [fila["fecha"].isoformat() for fila in por_dia],
@@ -96,11 +118,21 @@ def panel_estadistico(request):
                 ],
                 "values": [fila["cantidad"] for fila in por_camara],
             },
+            "hora": {
+                "labels": [f"{hora}:00" for hora in por_hora],
+                "values": list(por_hora.values()),
+            },
+            "dia_semana": {
+                "labels": list(por_dia_semana),
+                "values": list(por_dia_semana.values()),
+            },
         }
     return render(request, "reports/index.html", {
         **obtener_navegacion(request.user), "filtros": filtros,
         "filtros_activos": filtros_activos, "resumen": resumen,
         "graficas": graficas,
+        "hora_mayor_incidencia": hora_mayor_incidencia,
+        "dia_mayor_incidencia": dia_mayor_incidencia,
     })
 
 

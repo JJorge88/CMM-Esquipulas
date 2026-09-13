@@ -32,6 +32,18 @@
     <div class="col-12 col-xl-6"><div class="card dashboard-card h-100"><div class="card-header"><h2 class="h5 mb-0">Incidentes por institución</h2></div><div class="card-body"><div class="chart-wrap"><canvas id="grafica-institucion" data-report-chart="institucion" aria-label="Incidentes por institución" role="img"></canvas></div></div></div></div>
     <div class="col-12"><div class="card dashboard-card h-100"><div class="card-header"><h2 class="h5 mb-0">Incidentes por cámara</h2></div><div class="card-body"><div class="chart-wrap"><canvas id="grafica-camara" data-report-chart="camara" aria-label="Incidentes por cámara" role="img"></canvas></div></div></div></div>
 </section>
+<section class="mt-4" aria-labelledby="patrones-temporales-titulo">
+    <div class="mb-3"><h2 class="h4 mb-1" id="patrones-temporales-titulo">Patrones temporales</h2><p class="text-secondary mb-0">Distribución histórica según la hora local de Guatemala y los filtros seleccionados.</p></div>
+    {% if not resumen.total_incidentes %}<div class="alert alert-info" role="status">No hay datos disponibles en el período seleccionado.</div>{% endif %}
+    <div class="row g-4">
+        <div class="col-12 col-xl-6"><div class="card dashboard-card h-100"><div class="card-header"><h3 class="h5 mb-0">Incidentes por hora del día</h3></div><div class="card-body"><div class="chart-wrap"><canvas id="grafica-hora" data-report-chart="hora" aria-label="Incidentes por hora del día" role="img"></canvas></div></div></div></div>
+        <div class="col-12 col-xl-6"><div class="card dashboard-card h-100"><div class="card-header"><h3 class="h5 mb-0">Incidentes por día de la semana</h3></div><div class="card-body"><div class="chart-wrap"><canvas id="grafica-dia-semana" data-report-chart="dia_semana" aria-label="Incidentes por día de la semana" role="img"></canvas></div></div></div></div>
+    </div>
+    <div class="card dashboard-card mt-4"><div class="card-body row g-3">
+        <div class="col-12 col-md-6"><span class="text-secondary d-block">Hora con mayor incidencia</span>{% if hora_mayor_incidencia %}<strong>{{ hora_mayor_incidencia|join:", " }}</strong>{% if hora_mayor_incidencia|length > 1 %}<span class="text-secondary small d-block">Empate entre franjas horarias.</span>{% endif %}{% else %}<strong>Sin datos suficientes.</strong>{% endif %}</div>
+        <div class="col-12 col-md-6"><span class="text-secondary d-block">Día con mayor incidencia</span>{% if dia_mayor_incidencia %}<strong>{{ dia_mayor_incidencia|join:", " }}</strong>{% if dia_mayor_incidencia|length > 1 %}<span class="text-secondary small d-block">Empate entre días.</span>{% endif %}{% else %}<strong>Sin datos suficientes.</strong>{% endif %}</div>
+    </div></div>
+</section>
 {{ graficas|json_script:'datos-reportes' }}
 {% endblock %}
 {% block scripts %}

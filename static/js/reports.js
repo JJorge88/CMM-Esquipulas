@@ -16,13 +16,15 @@ document.addEventListener("DOMContentLoaded", () => {
         operador: { tipo: "bar", horizontal: true },
         institucion: { tipo: "bar", horizontal: true },
         camara: { tipo: "bar", horizontal: true },
+        hora: { tipo: "bar", horizontal: false, renderizarVacia: true },
+        dia_semana: { tipo: "bar", horizontal: false, renderizarVacia: true },
     };
 
     document.querySelectorAll("[data-report-chart]").forEach((lienzo) => {
         const clave = lienzo.dataset.reportChart;
         const serie = datos[clave];
-        if (!serie || !serie.values.some((valor) => valor > 0)) return;
         const config = configuraciones[clave];
+        if (!serie || !config || (!config.renderizarVacia && !serie.values.some((valor) => valor > 0))) return;
         new Chart(lienzo, {
             type: config.tipo,
             data: {

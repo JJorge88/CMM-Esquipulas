@@ -1,8 +1,17 @@
+from zoneinfo import ZoneInfo
+
 from django.core.exceptions import ValidationError
 from django.db.models import Avg, Count, F, Q
-from django.db.models.functions import TruncDate
+from django.db.models.functions import ExtractHour, ExtractIsoWeekDay, TruncDate
 
 from incidents.models import Incidente, ParticipacionInstitucion
+
+
+HORAS_DIA = tuple(f"{hora:02d}" for hora in range(24))
+DIAS_SEMANA = (
+    "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo",
+)
+ZONA_HORARIA_REPORTES = ZoneInfo("America/Guatemala")
 
 
 def _validar_periodo(fecha_desde=None, fecha_hasta=None):
@@ -15,13 +24,19 @@ def _validar_periodo(fecha_desde=None, fecha_hasta=None):
 def _filtrar_por_periodo(queryset, fecha_desde=None, fecha_hasta=None):
     _validar_periodo(fecha_desde, fecha_hasta)
 
+    if fecha_desde or fecha_hasta:
+        queryset = queryset.annotate(
+            _fecha_local_reporte=TruncDate(
+                "fecha_hora_reporte", tzinfo=ZONA_HORARIA_REPORTES
+            )
+        )
     if fecha_desde:
         queryset = queryset.filter(
-            fecha_hora_reporte__date__gte=fecha_desde
+            _fecha_local_reporte__gte=fecha_desde
         )
     if fecha_hasta:
         queryset = queryset.filter(
-            fecha_hora_reporte__date__lte=fecha_hasta
+            _fecha_local_reporte__lte=fecha_hasta
         )
     return queryset
 
@@ -222,11 +237,56 @@ def obtener_incidentes_por_dia(fecha_desde=None, fecha_hasta=None, **filtros):
         **filtros,
     )
     return list(
-        incidentes.annotate(fecha=TruncDate("fecha_hora_reporte"))
+        incidentes.annotate(fecha=TruncDate(
+            "fecha_hora_reporte", tzinfo=ZONA_HORARIA_REPORTES
+        ))
         .values("fecha")
         .annotate(cantidad=Count("id"))
         .order_by("fecha")
     )
+
+
+def obtener_incidentes_por_hora(fecha_desde=None, fecha_hasta=None, **filtros):
+    incidentes = _filtrar_incidentes(
+        Incidente.objects.all(), fecha_desde, fecha_hasta, **filtros
+    )
+    cantidades = {
+        fila["hora"]: fila["cantidad"]
+        for fila in incidentes.order_by().annotate(
+            hora=ExtractHour("fecha_hora_reporte", tzinfo=ZONA_HORARIA_REPORTES)
+        ).values("hora").annotate(cantidad=Count("id"))
+    }
+    return {
+        etiqueta: cantidades.get(hora, 0)
+        for hora, etiqueta in enumerate(HORAS_DIA)
+    }
+
+
+def obtener_incidentes_por_dia_semana(
+    fecha_desde=None, fecha_hasta=None, **filtros
+):
+    incidentes = _filtrar_incidentes(
+        Incidente.objects.all(), fecha_desde, fecha_hasta, **filtros
+    )
+    cantidades = {
+        fila["dia_semana"]: fila["cantidad"]
+        for fila in incidentes.order_by().annotate(
+            dia_semana=ExtractIsoWeekDay(
+                "fecha_hora_reporte", tzinfo=ZONA_HORARIA_REPORTES
+            )
+        ).values("dia_semana").annotate(cantidad=Count("id"))
+    }
+    return {
+        etiqueta: cantidades.get(numero, 0)
+        for numero, etiqueta in enumerate(DIAS_SEMANA, start=1)
+    }
+
+
+def obtener_maximos_temporales(cantidades):
+    mayor = max(cantidades.values(), default=0)
+    if not mayor:
+        return []
+    return [etiqueta for etiqueta, cantidad in cantidades.items() if cantidad == mayor]
 
 
 def buscar_incidentes(
