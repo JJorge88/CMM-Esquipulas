@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if creacion %}Nuevo tipo de recurso{% else %}Editar tipo de recurso{% endif %} | CMM Esquipulas{% endblock %}
+{% block content %}
+<div class="page-heading mb-4"><a class="text-decoration-none" href="{% url 'operations:resource_type_list' %}"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i> Volver a tipos de recurso</a><h1 class="h2 mt-3 mb-1">{% if creacion %}Nuevo tipo de recurso{% else %}Editar tipo de recurso{% endif %}</h1></div>
+<section class="card dashboard-card" aria-label="Datos del tipo de recurso"><div class="card-body p-4"><form method="post" novalidate>{% csrf_token %}
+    {% for error in formulario.non_field_errors %}<div class="alert alert-danger">{{ error }}</div>{% endfor %}
+    <div class="row g-3">{% for campo in formulario %}<div class="col-12">{% if campo.name == 'activo' %}<div class="form-check mt-2">{{ campo }}<label class="form-check-label" for="{{ campo.id_for_label }}">Activo</label></div>{% else %}<label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>{{ campo }}{% endif %}{% for error in campo.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>{% endfor %}</div>
+    <div class="d-flex flex-wrap gap-2 mt-4"><button class="btn btn-primary" type="submit">Guardar tipo</button><a class="btn btn-outline-secondary" href="{% url 'operations:resource_type_list' %}">Cancelar</a></div>
+</form></div></section>
+{% endblock %}

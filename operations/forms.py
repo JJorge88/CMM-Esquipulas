@@ -3,7 +3,9 @@ from django.contrib.auth.models import User
 
 from accounts.models import PerfilUsuario
 
-from .models import AsignacionTurno, InstitucionApoyo, Turno
+from .models import (
+    AsignacionTurno, InstitucionApoyo, RecursoInstitucional, TipoRecurso, Turno,
+)
 
 
 class TurnoForm(forms.ModelForm):
@@ -120,4 +122,94 @@ class FiltroInstitucionesForm(forms.Form):
         required=False, label="Estado",
         choices=(("", "Todas"), ("activa", "Activas"), ("inactiva", "Inactivas")),
         widget=forms.Select(attrs={"class": "form-select"}),
+    )
+
+
+class RecursoForm(forms.ModelForm):
+    class Meta:
+        model = RecursoInstitucional
+        fields = (
+            "nombre", "tipo", "codigo_interno", "marca", "modelo",
+            "numero_serie", "ubicacion", "descripcion", "estado", "activo",
+        )
+        widgets = {
+            "nombre": forms.TextInput(attrs={"class": "form-control"}),
+            "tipo": forms.Select(attrs={"class": "form-select"}),
+            "codigo_interno": forms.TextInput(attrs={"class": "form-control"}),
+            "marca": forms.TextInput(attrs={"class": "form-control"}),
+            "modelo": forms.TextInput(attrs={"class": "form-control"}),
+            "numero_serie": forms.TextInput(attrs={"class": "form-control"}),
+            "ubicacion": forms.TextInput(attrs={"class": "form-control"}),
+            "descripcion": forms.Textarea(attrs={"class": "form-control", "rows": 4}),
+            "estado": forms.Select(attrs={"class": "form-select"}),
+            "activo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
+
+    def __init__(self, *args, permitir_estado=True, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["tipo"].queryset = TipoRecurso.objects.filter(
+            activo=True
+        ).order_by("nombre")
+        if not permitir_estado:
+            self.fields.pop("activo")
+
+    def clean_codigo_interno(self):
+        valor = self.cleaned_data["codigo_interno"]
+        if valor and RecursoInstitucional.objects.filter(
+            codigo_interno=valor
+        ).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError("Este código interno ya está registrado.")
+        return valor
+
+    def clean_numero_serie(self):
+        valor = self.cleaned_data["numero_serie"]
+        if valor and RecursoInstitucional.objects.filter(
+            numero_serie=valor
+        ).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError("Este número de serie ya está registrado.")
+        return valor
+
+
+class FiltroRecursosForm(forms.Form):
+    busqueda = forms.CharField(
+        required=False, label="Buscar",
+        widget=forms.TextInput(attrs={
+            "class": "form-control",
+            "placeholder": "Nombre, código, marca, serie o ubicación",
+        }),
+    )
+    tipo = forms.ModelChoiceField(
+        required=False, queryset=TipoRecurso.objects.order_by("nombre"),
+        empty_label="Todos los tipos",
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+    estado = forms.ChoiceField(
+        required=False,
+        choices=(("", "Todos los estados"), *RecursoInstitucional.Estado.choices),
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+    activo = forms.ChoiceField(
+        required=False, label="Disponibilidad",
+        choices=(("", "Todos"), ("activo", "Activos"), ("inactivo", "Inactivos")),
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+
+
+class TipoRecursoForm(forms.ModelForm):
+    class Meta:
+        model = TipoRecurso
+        fields = ("nombre", "descripcion", "activo")
+        widgets = {
+            "nombre": forms.TextInput(attrs={"class": "form-control"}),
+            "descripcion": forms.Textarea(attrs={"class": "form-control", "rows": 4}),
+            "activo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
+
+
+class FiltroTiposRecursoForm(forms.Form):
+    busqueda = forms.CharField(
+        required=False, label="Buscar",
+        widget=forms.TextInput(attrs={
+            "class": "form-control", "placeholder": "Nombre o descripción",
+        }),
     )

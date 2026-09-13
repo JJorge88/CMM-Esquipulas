@@ -6,6 +6,13 @@ from . import views
 app_name = "operations"
 
 urlpatterns = [
+    path("recursos/", views.listar_recursos, name="resource_list"),
+    path("recursos/nuevo/", views.crear_recurso, name="resource_create"),
+    path("recursos/<int:pk>/editar/", views.editar_recurso, name="resource_update"),
+    path("recursos/<int:pk>/estado/", views.cambiar_estado_recurso, name="resource_toggle_status"),
+    path("tipos-recurso/", views.listar_tipos_recurso, name="resource_type_list"),
+    path("tipos-recurso/nuevo/", views.crear_tipo_recurso, name="resource_type_create"),
+    path("tipos-recurso/<int:pk>/editar/", views.editar_tipo_recurso, name="resource_type_update"),
     path("instituciones/", views.listar_instituciones, name="institution_list"),
     path("instituciones/nueva/", views.crear_institucion, name="institution_create"),
     path("instituciones/<int:pk>/editar/", views.editar_institucion, name="institution_update"),

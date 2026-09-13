@@ -26,11 +26,12 @@
                         <span class="sidebar-link nav-pendiente" aria-disabled="true"><i class="bi nav-symbol {% if opcion.titulo == 'Operación' %}bi-gear{% elif opcion.titulo == 'Reportes' %}bi-file-earmark-text{% else %}bi-grid{% endif %}" aria-hidden="true"></i>{{ opcion.titulo }}</span>
                     {% else %}
                         <a class="sidebar-link {% if opcion.titulo == 'Inicio' and request.path == '/dashboard/' or opcion.titulo == 'Incidentes' and '/incidentes/' in request.path or opcion.titulo == 'Usuarios' and '/usuarios/' in request.path or opcion.titulo == 'Operación' and '/operacion/' in request.path %}active{% endif %}" href="{% url opcion.url %}" {% if opcion.titulo == 'Inicio' %}aria-label="Inicio: Panel principal"{% endif %}><i class="bi nav-symbol {% if opcion.titulo == 'Inicio' %}bi-grid-1x2{% elif opcion.titulo == 'Incidentes' %}bi-exclamation-triangle{% elif opcion.titulo == 'Usuarios' %}bi-people{% elif opcion.titulo == 'Operación' %}bi-clock-history{% else %}bi-grid{% endif %}" aria-hidden="true"></i>{% if opcion.titulo == 'Inicio' %}Panel principal{% else %}{{ opcion.titulo }}{% endif %}</a>
-                        {% for subopcion in opcion.subopciones %}<a class="sidebar-sublink {% if subopcion.titulo == 'Turnos' and '/operacion/turnos/' in request.path or subopcion.titulo == 'Asignaciones' and '/operacion/asignaciones/' in request.path or subopcion.titulo == 'Instituciones' and '/operacion/instituciones/' in request.path %}active{% endif %}" href="{% url subopcion.url %}">{{ subopcion.titulo }}</a>{% endfor %}
+                        {% for subopcion in opcion.subopciones %}<a class="sidebar-sublink {% if subopcion.titulo == 'Turnos' and '/operacion/turnos/' in request.path or subopcion.titulo == 'Asignaciones' and '/operacion/asignaciones/' in request.path or subopcion.titulo == 'Instituciones' and '/operacion/instituciones/' in request.path or subopcion.titulo == 'Recursos' and '/operacion/recursos/' in request.path or subopcion.titulo == 'Tipos de recurso' and '/operacion/tipos-recurso/' in request.path %}active{% endif %}" href="{% url subopcion.url %}">{{ subopcion.titulo }}</a>{% endfor %}
                     {% endif %}
                 {% endfor %}
                 {% if mostrar_mis_turnos %}<a class="sidebar-link {% if '/operacion/asignaciones/' in request.path %}active{% endif %}" href="{% url 'operations:assignment_list' %}"><i class="bi bi-calendar-week nav-symbol" aria-hidden="true"></i>Mis turnos</a>{% endif %}
                 {% if mostrar_instituciones %}<a class="sidebar-link {% if '/operacion/instituciones/' in request.path %}active{% endif %}" href="{% url 'operations:institution_list' %}"><i class="bi bi-buildings nav-symbol" aria-hidden="true"></i>Instituciones</a>{% endif %}
+                {% if mostrar_recursos %}<a class="sidebar-link {% if '/operacion/recursos/' in request.path %}active{% endif %}" href="{% url 'operations:resource_list' %}"><i class="bi bi-box-seam nav-symbol" aria-hidden="true"></i>Recursos</a>{% endif %}
             </nav>
             <p class="sidebar-foot mt-auto mb-0">Centro de Monitoreo Municipal<br>Esquipulas, Chiquimula</p>
         </aside>
@@ -70,6 +71,7 @@
                             {% endfor %}
                             {% if mostrar_mis_turnos %}<a class="mobile-link" href="{% url 'operations:assignment_list' %}">Mis turnos</a>{% endif %}
                             {% if mostrar_instituciones %}<a class="mobile-link" href="{% url 'operations:institution_list' %}">Instituciones</a>{% endif %}
+                            {% if mostrar_recursos %}<a class="mobile-link" href="{% url 'operations:resource_list' %}">Recursos</a>{% endif %}
                         </nav>
                     </div>
                 {% else %}

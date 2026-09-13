@@ -38,6 +38,10 @@ def obtener_navegacion(usuario):
                     {"titulo": "Turnos", "url": "operations:turn_list"},
                     {"titulo": "Asignaciones", "url": "operations:assignment_list"},
                     {"titulo": "Instituciones", "url": "operations:institution_list"},
+                    {"titulo": "Recursos", "url": "operations:resource_list"},
+                    *(({"titulo": "Tipos de recurso", "url": "operations:resource_type_list"},)
+                      if rol in (PerfilUsuario.Rol.ADMINISTRADOR, PerfilUsuario.Rol.COORDINADOR)
+                      else ()),
                 )
                 if titulo == "Operación" else ()
             ),
@@ -50,6 +54,9 @@ def obtener_navegacion(usuario):
         "puede_registrar_incidente": rol in ROLES_REGISTRO_INCIDENTES,
         "mostrar_mis_turnos": rol == PerfilUsuario.Rol.OPERADOR,
         "mostrar_instituciones": rol in (
+            PerfilUsuario.Rol.OPERADOR, PerfilUsuario.Rol.CONSULTA,
+        ),
+        "mostrar_recursos": rol in (
             PerfilUsuario.Rol.OPERADOR, PerfilUsuario.Rol.CONSULTA,
         ),
     }

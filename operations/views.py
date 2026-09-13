@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -11,9 +12,12 @@ from accounts.permissions import roles_permitidos
 
 from .forms import (
     AsignacionForm, FiltroAsignacionesForm, FiltroInstitucionesForm,
-    FiltroTurnosForm, InstitucionForm, TurnoForm,
+    FiltroRecursosForm, FiltroTiposRecursoForm, FiltroTurnosForm,
+    InstitucionForm, RecursoForm, TipoRecursoForm, TurnoForm,
 )
-from .models import AsignacionTurno, InstitucionApoyo, Turno
+from .models import (
+    AsignacionTurno, InstitucionApoyo, RecursoInstitucional, TipoRecurso, Turno,
+)
 
 
 GESTORES = (PerfilUsuario.Rol.ADMINISTRADOR, PerfilUsuario.Rol.COORDINADOR)
@@ -33,6 +37,12 @@ def _paginacion(request, objetos):
 def _puede_gestionar(request):
     return PerfilUsuario.objects.filter(
         usuario=request.user, rol__in=GESTORES
+    ).exists()
+
+
+def _es_admin(request):
+    return PerfilUsuario.objects.filter(
+        usuario=request.user, rol=PerfilUsuario.Rol.ADMINISTRADOR
     ).exists()
 
 
@@ -223,3 +233,142 @@ def cambiar_estado_institucion(request, pk):
     else:
         messages.success(request, "Institución desactivada correctamente.")
     return redirect("operations:institution_list")
+
+
+@roles_permitidos(*LECTORES_INSTITUCIONES)
+def listar_recursos(request):
+    filtros = FiltroRecursosForm(request.GET or None)
+    recursos = RecursoInstitucional.objects.select_related("tipo")
+    if filtros.is_valid():
+        datos = filtros.cleaned_data
+        busqueda = datos["busqueda"].strip()
+        if busqueda:
+            recursos = recursos.filter(
+                Q(nombre__icontains=busqueda)
+                | Q(codigo_interno__icontains=busqueda)
+                | Q(marca__icontains=busqueda)
+                | Q(modelo__icontains=busqueda)
+                | Q(numero_serie__icontains=busqueda)
+                | Q(ubicacion__icontains=busqueda)
+            )
+        if datos["tipo"]:
+            recursos = recursos.filter(tipo=datos["tipo"])
+        if datos["estado"]:
+            recursos = recursos.filter(estado=datos["estado"])
+        if datos["activo"]:
+            recursos = recursos.filter(activo=datos["activo"] == "activo")
+    pagina, query_paginacion = _paginacion(
+        request, recursos.order_by("nombre", "pk")
+    )
+    return render(request, "operations/resource_list.html", {
+        **obtener_navegacion(request.user), "filtros": filtros,
+        "pagina": pagina, "query_paginacion": query_paginacion,
+        "puede_gestionar": _puede_gestionar(request),
+        "puede_cambiar_estado": _es_admin(request),
+    })
+
+
+def _guardar_recurso(request, formulario, mensaje):
+    if request.method == "POST" and formulario.is_valid():
+        try:
+            with transaction.atomic():
+                formulario.save()
+        except IntegrityError as error:
+            restriccion = getattr(getattr(error.__cause__, "diag", None), "constraint_name", "")
+            campo = {
+                "codigo_interno_recurso_unico": "codigo_interno",
+                "numero_serie_recurso_unico": "numero_serie",
+            }.get(restriccion)
+            if campo:
+                formulario.add_error(campo, "Este valor ya está registrado en otro recurso.")
+            else:
+                formulario.add_error(None, "No se pudo guardar el recurso. Revise los datos.")
+        else:
+            messages.success(request, mensaje)
+            return redirect("operations:resource_list")
+    return None
+
+
+@roles_permitidos(*GESTORES)
+def crear_recurso(request):
+    formulario = RecursoForm(request.POST or None, permitir_estado=_es_admin(request))
+    respuesta = _guardar_recurso(request, formulario, "Recurso creado correctamente.")
+    if respuesta:
+        return respuesta
+    return render(request, "operations/resource_form.html", {
+        **obtener_navegacion(request.user), "formulario": formulario,
+        "creacion": True,
+    })
+
+
+@roles_permitidos(*GESTORES)
+def editar_recurso(request, pk):
+    recurso = get_object_or_404(RecursoInstitucional, pk=pk)
+    formulario = RecursoForm(
+        request.POST or None, instance=recurso, permitir_estado=_es_admin(request)
+    )
+    respuesta = _guardar_recurso(request, formulario, "Recurso actualizado correctamente.")
+    if respuesta:
+        return respuesta
+    return render(request, "operations/resource_form.html", {
+        **obtener_navegacion(request.user), "formulario": formulario,
+        "creacion": False, "recurso": recurso,
+    })
+
+
+@roles_permitidos(PerfilUsuario.Rol.ADMINISTRADOR)
+@require_POST
+def cambiar_estado_recurso(request, pk):
+    recurso = get_object_or_404(RecursoInstitucional, pk=pk)
+    recurso.activo = not recurso.activo
+    recurso.save(update_fields=("activo", "fecha_actualizacion"))
+    if recurso.activo:
+        messages.success(request, "Recurso activado correctamente.")
+    else:
+        messages.success(request, "Recurso desactivado correctamente.")
+    return redirect("operations:resource_list")
+
+
+@roles_permitidos(*LECTORES_INSTITUCIONES)
+def listar_tipos_recurso(request):
+    filtros = FiltroTiposRecursoForm(request.GET or None)
+    tipos = TipoRecurso.objects.all()
+    if filtros.is_valid():
+        busqueda = filtros.cleaned_data["busqueda"].strip()
+        if busqueda:
+            tipos = tipos.filter(
+                Q(nombre__icontains=busqueda) | Q(descripcion__icontains=busqueda)
+            )
+    pagina, query_paginacion = _paginacion(request, tipos.order_by("nombre", "pk"))
+    return render(request, "operations/resource_type_list.html", {
+        **obtener_navegacion(request.user), "filtros": filtros,
+        "pagina": pagina, "query_paginacion": query_paginacion,
+        "puede_gestionar": _es_admin(request),
+    })
+
+
+@roles_permitidos(PerfilUsuario.Rol.ADMINISTRADOR)
+def crear_tipo_recurso(request):
+    formulario = TipoRecursoForm(request.POST or None)
+    if request.method == "POST" and formulario.is_valid():
+        formulario.save()
+        messages.success(request, "Tipo de recurso creado correctamente.")
+        return redirect("operations:resource_type_list")
+    return render(request, "operations/resource_type_form.html", {
+        **obtener_navegacion(request.user), "formulario": formulario,
+        "creacion": True,
+    })
+
+
+@roles_permitidos(PerfilUsuario.Rol.ADMINISTRADOR)
+def editar_tipo_recurso(request, pk):
+    tipo = get_object_or_404(TipoRecurso, pk=pk)
+    formulario = TipoRecursoForm(request.POST or None, instance=tipo)
+    if request.method == "POST" and formulario.is_valid():
+        formulario.save()
+        messages.success(request, "Tipo de recurso actualizado correctamente.")
+        return redirect("operations:resource_type_list")
+    return render(request, "operations/resource_type_form.html", {
+        **obtener_navegacion(request.user), "formulario": formulario,
+        "creacion": False, "tipo": tipo,
+    })
